@@ -32,5 +32,8 @@
 
 - 本地 Git 仓库已初始化。
 - 工作流文档已建立。
-- 远程 GitHub 仓库等待用户提供地址后配置。
+- 远程仓库已配置并推送：
 
+```text
+git@github.com:Abramfreemm/LowEndLock.git
+```
