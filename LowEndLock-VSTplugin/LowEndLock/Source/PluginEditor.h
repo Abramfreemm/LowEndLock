@@ -29,5 +29,9 @@ private:
     // access the processor object that created it.
     LowEndLockAudioProcessor& audioProcessor;
 
+    juce::Label gainLabel;
+    juce::Slider gainSlider;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessorEditor)
 };

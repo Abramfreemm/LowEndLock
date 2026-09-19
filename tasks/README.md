@@ -4,7 +4,7 @@
 |---|---|---|
 | 00 | 仓库与开发工作流初始化 | Done |
 | 01 | 空白 JUCE 插件骨架与首次构建 | Done |
-| 02 | 参数系统与 UI 基础 | Not Started |
+| 02 | 参数系统与 UI 基础 | In Progress |
 | 03 | Sidechain 输入路由 | Not Started |
 | 04 | 低频分析与信号可视化 | Not Started |
 | 05 | Python 参考算法验证 | Not Started |
@@ -20,4 +20,3 @@
 1. 先读 `tasks/00-repo-and-workflow.md`。
 2. 再读 `tasks/01-blank-plugin.md`。
 3. 后续按编号推进。
-

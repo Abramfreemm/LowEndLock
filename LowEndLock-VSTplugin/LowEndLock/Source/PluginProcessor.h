@@ -35,6 +35,9 @@ public:
     bool hasEditor() const override;
 
     //==============================================================================
+    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
+
+    //==============================================================================
     const juce::String getName() const override;
 
     bool acceptsMidi() const override;
@@ -54,6 +57,10 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    //==============================================================================
+    juce::AudioProcessorValueTreeState apvts;
+    juce::LinearSmoothedValue<float> gainSmoother;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessor)
 };

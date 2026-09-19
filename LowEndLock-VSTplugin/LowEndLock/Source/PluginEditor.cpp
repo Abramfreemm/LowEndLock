@@ -13,9 +13,19 @@
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    gainLabel.setText ("Gain", juce::dontSendNotification);
+    gainLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (gainLabel);
+
+    gainSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+    gainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, 20);
+    gainSlider.setTextValueSuffix (" dB");
+    addAndMakeVisible (gainSlider);
+
+    gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        audioProcessor.getAPVTS(), "gain", gainSlider);
+
+    setSize (420, 240);
 }
 
 LowEndLockAudioProcessorEditor::~LowEndLockAudioProcessorEditor()
@@ -25,16 +35,19 @@ LowEndLockAudioProcessorEditor::~LowEndLockAudioProcessorEditor()
 //==============================================================================
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
 
-    g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions (15.0f));
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.setColour (getLookAndFeel().findColour (juce::Label::textColourId));
+    g.setFont (juce::FontOptions (18.0f, juce::Font::bold));
+    g.drawText ("Low-End Lock", getLocalBounds().removeFromTop (40), juce::Justification::centred, true);
 }
 
 void LowEndLockAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    auto bounds = getLocalBounds().reduced (20);
+
+    auto controlsBounds = bounds.withSizeKeepingCentre (120, 140);
+
+    gainLabel.setBounds (controlsBounds.removeFromTop (24));
+    gainSlider.setBounds (controlsBounds);
 }

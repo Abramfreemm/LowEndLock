@@ -1,6 +1,6 @@
 # Task 02 — 参数系统与 UI 基础
 
-- 状态：Not Started
+- 状态：In Progress
 - 依赖：Task 01
 
 ## 目标
@@ -26,3 +26,10 @@
 - 范围：`-60 dB` 到 `+12 dB`。
 - 音频线程做 gain 平滑，避免爆音。
 
+## 进度记录
+
+- 已加入 `AudioProcessorValueTreeState`。
+- 已实现 `gain` 参数与线性平滑。
+- 已加入 Rotary Slider 与参数绑定。
+- `LowEndLock - Shared Code` 编译通过。
+- 待用户在 DAW 中验证自动化与预设保存。
