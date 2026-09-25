@@ -13,6 +13,8 @@
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
+    setSize (420, 260);
+
     gainLabel.setText ("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (gainLabel);
@@ -25,14 +27,29 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "gain", gainSlider);
 
-    setSize (420, 240);
+    sidechainStatusLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (sidechainStatusLabel);
+
+    startTimerHz (10);
 }
 
 LowEndLockAudioProcessorEditor::~LowEndLockAudioProcessorEditor()
 {
+    stopTimer();
 }
 
 //==============================================================================
+void LowEndLockAudioProcessorEditor::timerCallback()
+{
+    const auto rms = audioProcessor.getSidechainRms();
+    const auto hasSidechain = rms > 0.001f;
+
+    sidechainStatusLabel.setText (hasSidechain
+        ? juce::String ("Kick Sidechain: ") + juce::String (juce::Decibels::gainToDecibels (rms), 1) + " dB"
+        : juce::String ("Kick Sidechain: no signal"),
+        juce::dontSendNotification);
+}
+
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
@@ -45,6 +62,10 @@ void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
 void LowEndLockAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced (20);
+
+    bounds.removeFromTop (40);
+
+    sidechainStatusLabel.setBounds (bounds.removeFromBottom (32));
 
     auto controlsBounds = bounds.withSizeKeepingCentre (120, 140);
 

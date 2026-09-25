@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <JuceHeader.h>
 
 //==============================================================================
@@ -36,6 +37,7 @@ public:
 
     //==============================================================================
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
+    float getSidechainRms() const { return sidechainRms.load(); }
 
     //==============================================================================
     const juce::String getName() const override;
@@ -60,6 +62,7 @@ private:
     //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
     juce::LinearSmoothedValue<float> gainSmoother;
+    std::atomic<float> sidechainRms { 0.0f };
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessor)

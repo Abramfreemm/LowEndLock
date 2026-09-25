@@ -1,6 +1,6 @@
 # Task 03 — Sidechain 输入路由
 
-- 状态：Not Started
+- 状态：In Progress
 - 依赖：Task 02
 
 ## 目标
@@ -18,3 +18,12 @@
 - DAW 能将 Kick 路由到 sidechain。
 - 插件能检测 sidechain 活动状态。
 
+## 进度记录
+
+- 已在 `BusesProperties` 中添加 `Sidechain` 输入总线。
+- 已更新 `isBusesLayoutSupported` 以允许额外 sidechain。
+- `processBlock` 已分离主信号和 sidechain 缓冲。
+- 已计算 sidechain RMS 并通过原子变量供 UI 读取。
+- UI 已加入 `Kick Sidechain` 状态显示，定时刷新。
+- `LowEndLock - Shared Code` 编译通过。
+- 待用户在 DAW 中验证 sidechain 路由和状态显示。

@@ -14,13 +14,15 @@
 //==============================================================================
 /**
 */
-class LowEndLockAudioProcessorEditor  : public juce::AudioProcessorEditor
+class LowEndLockAudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                        private juce::Timer
 {
 public:
     LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor&);
     ~LowEndLockAudioProcessorEditor() override;
 
     //==============================================================================
+    void timerCallback() override;
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -30,6 +32,7 @@ private:
     LowEndLockAudioProcessor& audioProcessor;
 
     juce::Label gainLabel;
+    juce::Label sidechainStatusLabel;
     juce::Slider gainSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 

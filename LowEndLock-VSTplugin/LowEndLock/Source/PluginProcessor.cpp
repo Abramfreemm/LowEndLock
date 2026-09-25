@@ -34,7 +34,7 @@ LowEndLockAudioProcessor::LowEndLockAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ),
+                       .withInput  ("Sidechain", juce::AudioChannelSet::stereo())),
       apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
 }
@@ -127,21 +127,14 @@ bool LowEndLockAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+    if (layouts.getMainInputChannelSet().isDisabled())
         return false;
 
-    // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
-   #endif
 
-    return true;
+    return layouts.getMainInputChannelSet() == juce::AudioChannelSet::mono()
+        || layouts.getMainInputChannelSet() == juce::AudioChannelSet::stereo();
   #endif
 }
 #endif
@@ -149,28 +142,34 @@ bool LowEndLockAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
 void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+    auto mainInputOutput = getBusBuffer (buffer, true, 0);
+    auto sidechainInput  = getBusBuffer (buffer, true, 1);
 
     const auto gainDb = apvts.getRawParameterValue ("gain")->load();
     gainSmoother.setTargetValue (juce::Decibels::decibelsToGain (gainDb));
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    for (int channel = 0; channel < mainInputOutput.getNumChannels(); ++channel)
     {
-        auto* channelData = buffer.getWritePointer (channel);
+        auto* channelData = mainInputOutput.getWritePointer (channel);
 
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        for (int sample = 0; sample < mainInputOutput.getNumSamples(); ++sample)
             channelData[sample] *= gainSmoother.getNextValue();
     }
+
+    float sidechainSumSquares = 0.0f;
+    const auto sidechainSamples = sidechainInput.getNumSamples() * sidechainInput.getNumChannels();
+
+    for (int channel = 0; channel < sidechainInput.getNumChannels(); ++channel)
+    {
+        const auto* channelData = sidechainInput.getReadPointer (channel);
+
+        for (int sample = 0; sample < sidechainInput.getNumSamples(); ++sample)
+            sidechainSumSquares += channelData[sample] * channelData[sample];
+    }
+
+    sidechainRms.store (sidechainSamples > 0
+                        ? std::sqrt (sidechainSumSquares / static_cast<float> (sidechainSamples))
+                        : 0.0f);
 }
 
 //==============================================================================
