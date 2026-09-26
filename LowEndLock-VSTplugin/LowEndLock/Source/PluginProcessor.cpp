@@ -138,6 +138,12 @@ namespace
             juce::NormalisableRange<float> (-60.0f, 12.0f, 0.1f),
             0.0f));
 
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "mix", 1 },
+            "Mix",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
+            1.0f));
+
         return layout;
     }
 }
@@ -267,6 +273,25 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     analysisSideBuffer.clear();
     analysisWriteIndex = 0;
 
+    const auto maxDelaySamples = static_cast<int> (sampleRate * 0.04) + 8;
+    correctionDelay = std::make_unique<juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear>> (
+        static_cast<size_t> (maxDelaySamples));
+    correctionDelay->prepare ({ sampleRate, static_cast<juce::uint32> (samplesPerBlock), 2 });
+
+    const auto correctionLowPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeLowPass (sampleRate, 150.0f);
+    for (int channel = 0; channel < 2; ++channel)
+    {
+        correctionLowPass[channel].coefficients = correctionLowPassCoefficients;
+        correctionLowPass[channel].reset();
+    }
+
+    polaritySmoother.reset (sampleRate, 0.02);
+    polaritySmoother.setCurrentAndTargetValue (1.0f);
+
+    delayCenterSamples = static_cast<float> (maxDelaySamples) * 0.5f;
+    delaySmoother.reset (sampleRate, 0.05);
+    delaySmoother.setCurrentAndTargetValue (delayCenterSamples);
+
     if (! isThreadRunning())
         startThread();
 }
@@ -375,6 +400,40 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     sideLowRms.store (calculateBandLimitedRms (sidechainInput, sideHighPass, sideLowPass));
 
     captureAnalysisData (mainInputOutput, sidechainInput);
+
+    const auto mix = apvts.getRawParameterValue ("mix")->load();
+    const auto analysisReady = analysisResultReady.load();
+    const auto confidence = analysisConfidence.load();
+
+    if (analysisReady && confidence > 0.15f)
+    {
+        polaritySmoother.setTargetValue (suggestedPolarity.load() < 0 ? -1.0f : 1.0f);
+        delaySmoother.setTargetValue (delayCenterSamples + suggestedDelaySamples.load());
+    }
+    else
+    {
+        polaritySmoother.setTargetValue (1.0f);
+        delaySmoother.setTargetValue (delayCenterSamples);
+    }
+
+    for (int sample = 0; sample < mainInputOutput.getNumSamples(); ++sample)
+    {
+        const auto polarity = polaritySmoother.getNextValue();
+        const auto delaySamples = juce::jlimit (0.0f, delayCenterSamples * 2.0f, delaySmoother.getNextValue());
+        correctionDelay->setDelay (delaySamples);
+
+        for (int channel = 0; channel < mainInputOutput.getNumChannels(); ++channel)
+        {
+            const auto original = mainInputOutput.getReadPointer (channel)[sample];
+            const auto lowBand = correctionLowPass[channel].processSample (original);
+
+            correctionDelay->pushSample (channel, lowBand * polarity);
+            const auto correctedLowBand = correctionDelay->popSample (channel);
+
+            mainInputOutput.getWritePointer (channel)[sample] =
+                original + mix * (correctedLowBand - lowBand);
+        }
+    }
 
     const auto gainDb = apvts.getRawParameterValue ("gain")->load();
     gainSmoother.setTargetValue (juce::Decibels::decibelsToGain (gainDb));

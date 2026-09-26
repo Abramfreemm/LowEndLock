@@ -100,6 +100,12 @@ private:
     std::array<juce::dsp::IIR::Filter<float>, 1> analysisSideHighPass;
     std::array<juce::dsp::IIR::Filter<float>, 1> analysisSideLowPass;
 
+    juce::LinearSmoothedValue<float> polaritySmoother;
+    juce::LinearSmoothedValue<float> delaySmoother;
+    std::array<juce::dsp::IIR::Filter<float>, 2> correctionLowPass;
+    std::unique_ptr<juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear>> correctionDelay;
+    float delayCenterSamples = 0.0f;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessor)
 };
