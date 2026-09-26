@@ -11,6 +11,97 @@
 
 namespace
 {
+    struct PhaseAnalysisResult
+    {
+        bool valid = false;
+        bool invertPolarity = false;
+        float delaySamples = 0.0f;
+        float confidence = 0.0f;
+    };
+
+    PhaseAnalysisResult calculatePhaseAnalysis (const float* bass,
+                                                const float* kick,
+                                                int length,
+                                                double sampleRate)
+    {
+        PhaseAnalysisResult result;
+
+        if (length < 256)
+            return result;
+
+        double bassSum = 0.0;
+        double kickSum = 0.0;
+        double bassEnergy = 0.0;
+        double kickEnergy = 0.0;
+
+        for (int i = 0; i < length; ++i)
+        {
+            bassSum += bass[i];
+            kickSum += kick[i];
+            bassEnergy += bass[i] * bass[i];
+            kickEnergy += kick[i] * kick[i];
+        }
+
+        const auto bassRms = std::sqrt (bassEnergy / static_cast<double> (length));
+        const auto kickRms = std::sqrt (kickEnergy / static_cast<double> (length));
+
+        if (bassRms < 1e-4 || kickRms < 1e-4)
+            return result;
+
+        const auto bassMean = bassSum / static_cast<double> (length);
+        const auto kickMean = kickSum / static_cast<double> (length);
+        const auto maxLag = std::min (static_cast<int> (sampleRate * 0.02), length / 2);
+
+        int bestLag = 0;
+        float bestCorrelation = 0.0f;
+
+        for (int lag = -maxLag; lag <= maxLag; ++lag)
+        {
+            double crossSum = 0.0;
+            double bassSquares = 0.0;
+            double kickSquares = 0.0;
+            int count = 0;
+
+            for (int i = 0; i < length; ++i)
+            {
+                const auto kickIndex = i + lag;
+
+                if (kickIndex < 0 || kickIndex >= length)
+                    continue;
+
+                const auto bassCentered = bass[i] - bassMean;
+                const auto kickCentered = kick[kickIndex] - kickMean;
+
+                crossSum += bassCentered * kickCentered;
+                bassSquares += bassCentered * bassCentered;
+                kickSquares += kickCentered * kickCentered;
+                ++count;
+            }
+
+            if (count == 0)
+                continue;
+
+            const auto denominator = std::sqrt (bassSquares * kickSquares);
+            const auto correlation = denominator > 1e-12
+                ? static_cast<float> (crossSum / denominator)
+                : 0.0f;
+
+            if (std::abs (correlation) > std::abs (bestCorrelation) + 1e-9f
+                || (std::abs (correlation - bestCorrelation) < 1e-9f
+                    && std::abs (lag) < std::abs (bestLag)))
+            {
+                bestCorrelation = correlation;
+                bestLag = lag;
+            }
+        }
+
+        result.valid = true;
+        result.invertPolarity = bestCorrelation < 0.0f;
+        result.delaySamples = static_cast<float> (-bestLag);
+        result.confidence = std::clamp (std::abs (bestCorrelation), 0.0f, 1.0f);
+        return result;
+    }
+
     float calculateBandLimitedRms (const juce::AudioBuffer<float>& buffer,
                                    std::array<juce::dsp::IIR::Filter<float>, 2>& highPass,
                                    std::array<juce::dsp::IIR::Filter<float>, 2>& lowPass)
@@ -61,12 +152,14 @@ LowEndLockAudioProcessor::LowEndLockAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        .withInput  ("Sidechain", juce::AudioChannelSet::stereo())),
+      Thread ("LowEndAnalysis"),
       apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
 }
 
 LowEndLockAudioProcessor::~LowEndLockAudioProcessor()
 {
+    stopThread (1000);
 }
 
 //==============================================================================
@@ -134,6 +227,8 @@ void LowEndLockAudioProcessor::changeProgramName (int index, const juce::String&
 //==============================================================================
 void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    currentSampleRate = sampleRate;
+
     gainSmoother.reset (sampleRate, 0.02);
 
     const auto initialGainDb = apvts.getRawParameterValue ("gain")->load();
@@ -154,12 +249,101 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
         sideHighPass[channel].reset();
         sideLowPass [channel].reset();
     }
+
+    analysisMainHighPass[0].coefficients = highPassCoefficients;
+    analysisMainLowPass [0].coefficients = lowPassCoefficients;
+    analysisSideHighPass[0].coefficients = highPassCoefficients;
+    analysisSideLowPass [0].coefficients = lowPassCoefficients;
+
+    analysisMainHighPass[0].reset();
+    analysisMainLowPass [0].reset();
+    analysisSideHighPass[0].reset();
+    analysisSideLowPass [0].reset();
+
+    analysisBufferSize = static_cast<int> (sampleRate * 2.0);
+    analysisMainBuffer.setSize (1, analysisBufferSize);
+    analysisSideBuffer.setSize (1, analysisBufferSize);
+    analysisMainBuffer.clear();
+    analysisSideBuffer.clear();
+    analysisWriteIndex = 0;
+
+    if (! isThreadRunning())
+        startThread();
+}
+
+void LowEndLockAudioProcessor::requestAnalysis()
+{
+    analysisWriteIndex = 0;
+    analysisMainBuffer.clear();
+    analysisSideBuffer.clear();
+    analysisResultReady.store (false);
+    analysisDataReady.store (false);
+    analysisRequested.store (true);
+    notify();
+}
+
+void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<float>& main,
+                                                    const juce::AudioBuffer<float>& side)
+{
+    if (! analysisRequested.load() || analysisWriteIndex >= analysisBufferSize)
+        return;
+
+    auto* mainWrite = analysisMainBuffer.getWritePointer (0);
+    auto* sideWrite = analysisSideBuffer.getWritePointer (0);
+    const auto numSamples = std::min (main.getNumSamples(), side.getNumSamples());
+
+    for (int sample = 0; sample < numSamples; ++sample)
+    {
+        if (analysisWriteIndex >= analysisBufferSize)
+            break;
+
+        const auto mainSample = main.getNumChannels() > 0
+            ? main.getReadPointer (0)[sample]
+            : 0.0f;
+        const auto sideSample = side.getNumChannels() > 0
+            ? side.getReadPointer (0)[sample]
+            : 0.0f;
+
+        mainWrite[analysisWriteIndex] = analysisMainLowPass[0].processSample (
+            analysisMainHighPass[0].processSample (mainSample));
+        sideWrite[analysisWriteIndex] = analysisSideLowPass[0].processSample (
+            analysisSideHighPass[0].processSample (sideSample));
+
+        ++analysisWriteIndex;
+    }
+
+    if (analysisWriteIndex >= analysisBufferSize)
+    {
+        analysisRequested.store (false);
+        analysisDataReady.store (true);
+        notify();
+    }
+}
+
+void LowEndLockAudioProcessor::run()
+{
+    while (! threadShouldExit())
+    {
+        if (analysisDataReady.exchange (false))
+        {
+            const auto* mainData = analysisMainBuffer.getReadPointer (0);
+            const auto* sideData = analysisSideBuffer.getReadPointer (0);
+            const auto result = calculatePhaseAnalysis (mainData, sideData, analysisBufferSize, currentSampleRate);
+
+            suggestedPolarity.store (result.invertPolarity ? -1 : 1);
+            suggestedDelaySamples.store (result.delaySamples);
+            analysisConfidence.store (result.confidence);
+            analysisResultReady.store (true);
+        }
+        else
+        {
+            wait (10);
+        }
+    }
 }
 
 void LowEndLockAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -189,6 +373,8 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 
     mainLowRms.store (calculateBandLimitedRms (mainInputOutput, mainHighPass, mainLowPass));
     sideLowRms.store (calculateBandLimitedRms (sidechainInput, sideHighPass, sideLowPass));
+
+    captureAnalysisData (mainInputOutput, sidechainInput);
 
     const auto gainDb = apvts.getRawParameterValue ("gain")->load();
     gainSmoother.setTargetValue (juce::Decibels::decibelsToGain (gainDb));

@@ -16,7 +16,8 @@
 //==============================================================================
 /**
 */
-class LowEndLockAudioProcessor  : public juce::AudioProcessor
+class LowEndLockAudioProcessor  : public juce::AudioProcessor,
+                                  private juce::Thread
 {
 public:
     //==============================================================================
@@ -41,6 +42,11 @@ public:
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
     float getMainLowRms() const { return mainLowRms.load(); }
     float getSidechainLowRms() const { return sideLowRms.load(); }
+    float getSuggestedDelaySamples() const { return suggestedDelaySamples.load(); }
+    int   getSuggestedPolarity() const { return suggestedPolarity.load(); }
+    float getAnalysisConfidence() const { return analysisConfidence.load(); }
+
+    void requestAnalysis();
 
     //==============================================================================
     const juce::String getName() const override;
@@ -62,16 +68,37 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    void run() override;
+    void captureAnalysisData (const juce::AudioBuffer<float>& main,
+                              const juce::AudioBuffer<float>& side);
+
     //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
     juce::LinearSmoothedValue<float> gainSmoother;
     std::atomic<float> mainLowRms { 0.0f };
     std::atomic<float> sideLowRms { 0.0f };
 
+    juce::AudioBuffer<float> analysisMainBuffer;
+    juce::AudioBuffer<float> analysisSideBuffer;
+    int analysisBufferSize = 0;
+    int analysisWriteIndex = 0;
+    double currentSampleRate = 48000.0;
+
+    std::atomic<bool> analysisRequested { false };
+    std::atomic<bool> analysisDataReady { false };
+    std::atomic<bool> analysisResultReady { false };
+    std::atomic<int> suggestedPolarity { 1 };
+    std::atomic<float> suggestedDelaySamples { 0.0f };
+    std::atomic<float> analysisConfidence { 0.0f };
+
     std::array<juce::dsp::IIR::Filter<float>, 2> mainHighPass;
     std::array<juce::dsp::IIR::Filter<float>, 2> mainLowPass;
     std::array<juce::dsp::IIR::Filter<float>, 2> sideHighPass;
     std::array<juce::dsp::IIR::Filter<float>, 2> sideLowPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> analysisMainHighPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> analysisMainLowPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> analysisSideHighPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> analysisSideLowPass;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessor)
