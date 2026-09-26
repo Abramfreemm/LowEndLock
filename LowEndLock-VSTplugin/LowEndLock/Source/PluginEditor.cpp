@@ -13,7 +13,7 @@
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize (420, 260);
+    setSize (420, 300);
 
     gainLabel.setText ("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType (juce::Justification::centred);
@@ -27,8 +27,10 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "gain", gainSlider);
 
-    sidechainStatusLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (sidechainStatusLabel);
+    bassLowLabel.setJustificationType (juce::Justification::centred);
+    kickLowLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (bassLowLabel);
+    addAndMakeVisible (kickLowLabel);
 
     startTimerHz (10);
 }
@@ -41,12 +43,17 @@ LowEndLockAudioProcessorEditor::~LowEndLockAudioProcessorEditor()
 //==============================================================================
 void LowEndLockAudioProcessorEditor::timerCallback()
 {
-    const auto rms = audioProcessor.getSidechainRms();
-    const auto hasSidechain = rms > 0.001f;
+    const auto mainRms = audioProcessor.getMainLowRms();
+    const auto sideRms = audioProcessor.getSidechainLowRms();
 
-    sidechainStatusLabel.setText (hasSidechain
-        ? juce::String ("Kick Sidechain: ") + juce::String (juce::Decibels::gainToDecibels (rms), 1) + " dB"
-        : juce::String ("Kick Sidechain: no signal"),
+    bassLowLabel.setText (mainRms > 0.001f
+        ? juce::String ("Bass Low: ") + juce::String (juce::Decibels::gainToDecibels (mainRms), 1) + " dB"
+        : juce::String ("Bass Low: no signal"),
+        juce::dontSendNotification);
+
+    kickLowLabel.setText (sideRms > 0.001f
+        ? juce::String ("Kick Low: ") + juce::String (juce::Decibels::gainToDecibels (sideRms), 1) + " dB"
+        : juce::String ("Kick Low: no signal"),
         juce::dontSendNotification);
 }
 
@@ -65,7 +72,9 @@ void LowEndLockAudioProcessorEditor::resized()
 
     bounds.removeFromTop (40);
 
-    sidechainStatusLabel.setBounds (bounds.removeFromBottom (32));
+    auto statusBounds = bounds.removeFromBottom (64);
+    bassLowLabel.setBounds (statusBounds.removeFromTop (28));
+    kickLowLabel.setBounds (statusBounds.removeFromTop (28));
 
     auto controlsBounds = bounds.withSizeKeepingCentre (120, 140);
 

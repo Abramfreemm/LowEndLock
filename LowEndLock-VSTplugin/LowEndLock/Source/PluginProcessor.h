@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <JuceHeader.h>
+#include <juce_dsp/juce_dsp.h>
 
 //==============================================================================
 /**
@@ -37,7 +39,8 @@ public:
 
     //==============================================================================
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
-    float getSidechainRms() const { return sidechainRms.load(); }
+    float getMainLowRms() const { return mainLowRms.load(); }
+    float getSidechainLowRms() const { return sideLowRms.load(); }
 
     //==============================================================================
     const juce::String getName() const override;
@@ -62,7 +65,13 @@ private:
     //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
     juce::LinearSmoothedValue<float> gainSmoother;
-    std::atomic<float> sidechainRms { 0.0f };
+    std::atomic<float> mainLowRms { 0.0f };
+    std::atomic<float> sideLowRms { 0.0f };
+
+    std::array<juce::dsp::IIR::Filter<float>, 2> mainHighPass;
+    std::array<juce::dsp::IIR::Filter<float>, 2> mainLowPass;
+    std::array<juce::dsp::IIR::Filter<float>, 2> sideHighPass;
+    std::array<juce::dsp::IIR::Filter<float>, 2> sideLowPass;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessor)

@@ -32,7 +32,8 @@ private:
     LowEndLockAudioProcessor& audioProcessor;
 
     juce::Label gainLabel;
-    juce::Label sidechainStatusLabel;
+    juce::Label bassLowLabel;
+    juce::Label kickLowLabel;
     juce::Slider gainSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 

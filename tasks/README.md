@@ -6,7 +6,7 @@
 | 01 | 空白 JUCE 插件骨架与首次构建 | Done |
 | 02 | 参数系统与 UI 基础 | In Progress |
 | 03 | Sidechain 输入路由 | In Progress |
-| 04 | 低频分析与信号可视化 | Not Started |
+| 04 | 低频分析与信号可视化 | In Progress |
 | 05 | Python 参考算法验证 | Not Started |
 | 06 | C++ 相位分析引擎 | Not Started |
 | 07 | 极性与分数延迟补偿 | Not Started |

@@ -11,6 +11,32 @@
 
 namespace
 {
+    float calculateBandLimitedRms (const juce::AudioBuffer<float>& buffer,
+                                   std::array<juce::dsp::IIR::Filter<float>, 2>& highPass,
+                                   std::array<juce::dsp::IIR::Filter<float>, 2>& lowPass)
+    {
+        double sumSquares = 0.0;
+        int sampleCount = 0;
+
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        {
+            const auto* channelData = buffer.getReadPointer (channel);
+
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            {
+                const auto filtered = lowPass[channel].processSample (
+                    highPass[channel].processSample (channelData[sample]));
+
+                sumSquares += static_cast<double> (filtered) * filtered;
+                ++sampleCount;
+            }
+        }
+
+        return sampleCount > 0
+            ? static_cast<float> (std::sqrt (sumSquares / static_cast<double> (sampleCount)))
+            : 0.0f;
+    }
+
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     {
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -112,6 +138,22 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
 
     const auto initialGainDb = apvts.getRawParameterValue ("gain")->load();
     gainSmoother.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (initialGainDb));
+
+    const auto highPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass (sampleRate, 20.0f);
+    const auto lowPassCoefficients  = juce::dsp::IIR::Coefficients<float>::makeLowPass  (sampleRate, 150.0f);
+
+    for (int channel = 0; channel < 2; ++channel)
+    {
+        mainHighPass[channel].coefficients = highPassCoefficients;
+        mainLowPass [channel].coefficients = lowPassCoefficients;
+        sideHighPass[channel].coefficients = highPassCoefficients;
+        sideLowPass [channel].coefficients = lowPassCoefficients;
+
+        mainHighPass[channel].reset();
+        mainLowPass [channel].reset();
+        sideHighPass[channel].reset();
+        sideLowPass [channel].reset();
+    }
 }
 
 void LowEndLockAudioProcessor::releaseResources()
@@ -145,6 +187,9 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     auto mainInputOutput = getBusBuffer (buffer, true, 0);
     auto sidechainInput  = getBusBuffer (buffer, true, 1);
 
+    mainLowRms.store (calculateBandLimitedRms (mainInputOutput, mainHighPass, mainLowPass));
+    sideLowRms.store (calculateBandLimitedRms (sidechainInput, sideHighPass, sideLowPass));
+
     const auto gainDb = apvts.getRawParameterValue ("gain")->load();
     gainSmoother.setTargetValue (juce::Decibels::decibelsToGain (gainDb));
 
@@ -156,20 +201,6 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
             channelData[sample] *= gainSmoother.getNextValue();
     }
 
-    float sidechainSumSquares = 0.0f;
-    const auto sidechainSamples = sidechainInput.getNumSamples() * sidechainInput.getNumChannels();
-
-    for (int channel = 0; channel < sidechainInput.getNumChannels(); ++channel)
-    {
-        const auto* channelData = sidechainInput.getReadPointer (channel);
-
-        for (int sample = 0; sample < sidechainInput.getNumSamples(); ++sample)
-            sidechainSumSquares += channelData[sample] * channelData[sample];
-    }
-
-    sidechainRms.store (sidechainSamples > 0
-                        ? std::sqrt (sidechainSumSquares / static_cast<float> (sidechainSamples))
-                        : 0.0f);
 }
 
 //==============================================================================
