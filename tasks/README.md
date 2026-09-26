@@ -7,7 +7,7 @@
 | 02 | 参数系统与 UI 基础 | In Progress |
 | 03 | Sidechain 输入路由 | In Progress |
 | 04 | 低频分析与信号可视化 | In Progress |
-| 05 | Python 参考算法验证 | Not Started |
+| 05 | Python 参考算法验证 | Done |
 | 06 | C++ 相位分析引擎 | Not Started |
 | 07 | 极性与分数延迟补偿 | Not Started |
 | 08 | 产品 UI 与交互闭环 | Not Started |
