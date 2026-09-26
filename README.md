@@ -35,6 +35,7 @@ Pre-development / Product Definition。
 | [09-project-plan.md](docs/09-project-plan.md) | 里程碑、任务拆分与估算 | 9 |
 | [10-product-logic-map.md](docs/10-product-logic-map.md) | 产品逻辑导图 | 10 |
 | [11-development-guide.md](docs/11-development-guide.md) | 零基础开发路径 | 11 |
+| [12-manual-validation-checklist.md](docs/12-manual-validation-checklist.md) | 手动验收清单 | 12 |
 
 ## 任务与接续
 
@@ -67,7 +68,8 @@ lowend-lock/
 │   ├── 08-release-and-roadmap.md
 │   ├── 09-project-plan.md
 │   ├── 10-product-logic-map.md
-│   └── 11-development-guide.md
+│   ├── 11-development-guide.md
+│   └── 12-manual-validation-checklist.md
 ├── tasks/             # 每个小任务一个文档
 ├── handoffs/          # 中断接续文档
 ├── Source/            # JUCE 源码：Processor / Editor / DSP
