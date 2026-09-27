@@ -1,0 +1,26 @@
+JUCE 9.0.2 — Logic Pro AU sidechain bus-count bug fix
+
+Root cause: JUCE's AU wrapper `JuceAU::SetBusCount()` syncs the stream-format
+layout tag of the wrong bus when Logic adds a sidechain input bus
+(kAudioUnitProperty_ElementCount input 1 -> 2). It updates element `busNr`
+instead of the newly added element `busNr + 1`, so AudioUnitInitialize fails
+with kAudioUnitErr_FormatNotSupported (-10868) and Logic falls back to the
+generic view with no sound.
+
+Apply this patch to a local JUCE source tree:
+
+  /Users/abram/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_1.mm
+
+Reference: https://forum.juce.com/t/69501
+
+--- a/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_1.mm
++++ b/modules/juce_audio_plugin_client/juce_audio_plugin_client_AU_1.mm
+@@ -347,7 +347,7 @@ OSStatus SetBusCount (AudioUnitScope scope, UInt32 count) override
+                         if (! juceFilter->addBus (isInput))
+                             break;
+
+-                        err = syncAudioUnitWithChannelSet (isInput, busNr,
++                        err = syncAudioUnitWithChannelSet (isInput, busNr + 1,
+                                                            juceFilter->getBus (isInput, busNr + 1)->getDefaultLayout());
+                         if (err != noErr)
+                             break;

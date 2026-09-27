@@ -32,6 +32,11 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
    #endif
 
+    bool canAddBus (bool isInput) const override;
+    bool canRemoveBus (bool isInput) const override;
+    bool canApplyBusCountChange (bool isInput, bool isAddingBuses,
+                                 BusProperties& outNewBusProperties) override;
+
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     //==============================================================================
