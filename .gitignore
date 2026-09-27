@@ -24,3 +24,6 @@ venv/
 *.log
 *.tmp
 
+# Temporary screenshots shared for debugging
+/插件UI界面-0926.png
+/logic截图-1.png

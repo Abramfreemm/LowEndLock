@@ -21,6 +21,7 @@
 ## 进度记录
 
 - 已在 `BusesProperties` 中添加 `Sidechain` 输入总线。
+- 已将 Sidechain 总线改为 Mono，以提升 Logic 等 AU 宿主的识别兼容性。
 - 已更新 `isBusesLayoutSupported` 以允许额外 sidechain。
 - `processBlock` 已分离主信号和 sidechain 缓冲。
 - 已计算 sidechain RMS 并通过原子变量供 UI 读取。

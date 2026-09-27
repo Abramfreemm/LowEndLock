@@ -157,7 +157,7 @@ LowEndLockAudioProcessor::LowEndLockAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       .withInput  ("Sidechain", juce::AudioChannelSet::stereo())),
+                       .withInput  ("Sidechain", juce::AudioChannelSet::mono())),
       Thread ("LowEndAnalysis"),
       apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
