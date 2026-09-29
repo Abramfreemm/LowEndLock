@@ -7,7 +7,7 @@ int main()
 {
     AudioComponentDescription desc = {};
     desc.componentType    = kAudioUnitType_Effect;
-    desc.componentSubType = 'Vtqh';
+    desc.componentSubType = 'Vtqi';
     desc.componentManufacturer = 'Manu';
 
     AudioComponent comp = AudioComponentFindNext (NULL, &desc);

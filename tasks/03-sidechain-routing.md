@@ -44,6 +44,8 @@ AudioProcessor (BusesProperties()
 ## 最终修复方案
 
 - 构造函数静态声明 `Sidechain` 输入总线，**stereo**，与主 `Input`、`Output` 并列。
+- **sidechain 总线必须 `isActivatedByDefault = false`**（`withInput(..., stereo, false)`）。
+  否则 Logic 会把主输入（Bass）灌进 sidechain，导致分析拿 bass 对比 bass（confidence 100%、saved 0 dB）。
 - `isBusesLayoutSupported()` 采用官方 NoiseGate 写法：
   「主输入输出必须一致，sidechain 不限布局」。
 - 把 AU subtype 从 `Vtqg` 改为 `Vtqh`（`.jucer` 中 `pluginCode="Vtqh"`），
