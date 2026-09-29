@@ -128,6 +128,23 @@ namespace
             : 0.0f;
     }
 
+    // Mix a buffer's sample at a given index down to mono by averaging all
+    // channels. For stereo this is (L + R) / 2, which keeps the average level
+    // and avoids biasing the phase analysis towards the left channel only.
+    float mixToMonoSample (const juce::AudioBuffer<float>& buffer, int sample)
+    {
+        const auto numChannels = buffer.getNumChannels();
+
+        if (numChannels == 0)
+            return 0.0f;
+
+        double sum = 0.0;
+        for (int channel = 0; channel < numChannels; ++channel)
+            sum += buffer.getReadPointer (channel)[sample];
+
+        return static_cast<float> (sum / static_cast<double> (numChannels));
+    }
+
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     {
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -322,12 +339,8 @@ void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<floa
         if (analysisWriteIndex >= analysisBufferSize)
             break;
 
-        const auto mainSample = main.getNumChannels() > 0
-            ? main.getReadPointer (0)[sample]
-            : 0.0f;
-        const auto sideSample = side.getNumChannels() > 0
-            ? side.getReadPointer (0)[sample]
-            : 0.0f;
+        const auto mainSample = mixToMonoSample (main, sample);
+        const auto sideSample = mixToMonoSample (side, sample);
 
         mainWrite[analysisWriteIndex] = analysisMainLowPass[0].processSample (
             analysisMainHighPass[0].processSample (mainSample));
