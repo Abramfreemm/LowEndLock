@@ -364,6 +364,11 @@ void LowEndLockAudioProcessor::setLockEngaged (bool engaged)
     }
 }
 
+void LowEndLockAudioProcessor::setBypassCorrection (bool bypass)
+{
+    bypassCorrection.store (bypass);
+}
+
 void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<float>& main,
                                                     const juce::AudioBuffer<float>& side)
 {
@@ -457,8 +462,9 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     const auto analysisReady = analysisResultReady.load();
     const auto confidence = analysisConfidence.load();
     const auto locked = lockEngaged.load();
+    const auto bypassed = bypassCorrection.load();
 
-    if (locked && analysisReady && confidence > 0.15f)
+    if (locked && analysisReady && confidence > 0.15f && ! bypassed)
     {
         polaritySmoother.setTargetValue (suggestedPolarity.load() < 0 ? -1.0f : 1.0f);
         delaySmoother.setTargetValue (delayCenterSamples + suggestedDelaySamples.load());

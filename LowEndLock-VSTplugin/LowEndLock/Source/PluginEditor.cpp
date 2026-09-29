@@ -54,6 +54,14 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     };
     addAndMakeVisible (lockButton);
 
+    abButton.setButtonText ("B (fix)");
+    abButton.setClickingTogglesState (true);
+    abButton.onClick = [this]
+    {
+        audioProcessor.setBypassCorrection (abButton.getToggleState());
+    };
+    addAndMakeVisible (abButton);
+
     bassLowLabel.setJustificationType (juce::Justification::centred);
     kickLowLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (bassLowLabel);
@@ -88,6 +96,7 @@ void LowEndLockAudioProcessorEditor::timerCallback()
 
     const auto locked = audioProcessor.isLockEngaged();
     const auto ready = audioProcessor.isAnalysisReady();
+    const auto bypassed = audioProcessor.isBypassCorrection();
 
     if (locked && ready)
     {
@@ -96,16 +105,19 @@ void LowEndLockAudioProcessorEditor::timerCallback()
                                  + juce::String (savedDb, 1) + " dB",
                                  juce::dontSendNotification);
         savedValueLabel.setColour (juce::Label::textColourId,
-                                   savedDb >= 0.0f ? juce::Colours::limegreen : juce::Colours::orange);
+                                   bypassed ? juce::Colours::grey
+                                            : (savedDb >= 0.0f ? juce::Colours::limegreen : juce::Colours::orange));
 
         const auto invert = audioProcessor.getSuggestedPolarity() < 0;
         const auto delayMs = audioProcessor.getSuggestedDelaySamples()
                              / audioProcessor.getCurrentSampleRate() * 1000.0;
         const auto confidence = audioProcessor.getAnalysisConfidence() * 100.0f;
+        const auto applied = confidence > 15.0f && ! bypassed;
 
         detailLabel.setText (juce::String ("Polarity: ") + (invert ? "Invert" : "Normal")
                              + "    Delay: " + juce::String (delayMs, 2) + " ms"
-                             + "    Confidence: " + juce::String (confidence, 0) + "%",
+                             + "    Confidence: " + juce::String (confidence, 0) + "%"
+                             + (applied ? "" : "   [not applied]"),
                              juce::dontSendNotification);
     }
     else if (locked)
@@ -123,6 +135,8 @@ void LowEndLockAudioProcessorEditor::timerCallback()
 
     lockButton.setToggleState (locked, juce::dontSendNotification);
     lockButton.setButtonText (locked ? "Locked" : "Lock");
+    abButton.setToggleState (bypassed, juce::dontSendNotification);
+    abButton.setButtonText (bypassed ? "A (orig)" : "B (fix)");
 }
 
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
@@ -144,7 +158,13 @@ void LowEndLockAudioProcessorEditor::resized()
     savedValueLabel.setBounds (bounds.removeFromTop (52));
     detailLabel.setBounds (bounds.removeFromTop (26));
     bounds.removeFromTop (8);
-    lockButton.setBounds (bounds.removeFromTop (42));
+
+    auto buttonsRow = bounds.removeFromTop (42);
+    const auto buttonWidth = (buttonsRow.getWidth() - 8) / 2;
+    lockButton.setBounds (buttonsRow.removeFromLeft (buttonWidth));
+    buttonsRow.removeFromLeft (8);
+    abButton.setBounds (buttonsRow);
+
     bounds.removeFromTop (14);
 
     auto metersBounds = bounds.removeFromBottom (56);

@@ -39,6 +39,7 @@ private:
     juce::Label detailLabel;
     juce::Slider gainSlider;
     juce::TextButton lockButton;
+    juce::TextButton abButton;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessorEditor)

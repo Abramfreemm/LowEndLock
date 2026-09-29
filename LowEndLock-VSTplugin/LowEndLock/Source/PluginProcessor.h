@@ -49,9 +49,11 @@ public:
     double getCurrentSampleRate() const { return currentSampleRate; }
     bool isLockEngaged() const { return lockEngaged.load(); }
     bool isAnalysisReady() const { return analysisResultReady.load(); }
+    bool isBypassCorrection() const { return bypassCorrection.load(); }
 
     void requestAnalysis();
     void setLockEngaged (bool engaged);
+    void setBypassCorrection (bool bypass);
 
     //==============================================================================
     const juce::String getName() const override;
@@ -97,6 +99,7 @@ private:
     std::atomic<float> analysisConfidence { 0.0f };
     std::atomic<float> cancellationSavedDb { 0.0f };
     std::atomic<bool> lockEngaged { false };
+    std::atomic<bool> bypassCorrection { false };
 
     std::array<juce::dsp::IIR::Filter<float>, 2> mainHighPass;
     std::array<juce::dsp::IIR::Filter<float>, 2> mainLowPass;
