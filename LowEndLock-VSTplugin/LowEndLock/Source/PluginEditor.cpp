@@ -13,7 +13,7 @@
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p)
 {
-    setSize (420, 300);
+    setSize (440, 460);
 
     gainLabel.setText ("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType (juce::Justification::centred);
@@ -26,6 +26,33 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
 
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "gain", gainSlider);
+
+    savedCaptionLabel.setText ("CANCELLATION SAVED", juce::dontSendNotification);
+    savedCaptionLabel.setJustificationType (juce::Justification::centred);
+    savedCaptionLabel.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    savedCaptionLabel.setColour (juce::Label::textColourId, juce::Colours::grey);
+    addAndMakeVisible (savedCaptionLabel);
+
+    savedValueLabel.setText ("--", juce::dontSendNotification);
+    savedValueLabel.setJustificationType (juce::Justification::centred);
+    savedValueLabel.setFont (juce::FontOptions (46.0f, juce::Font::bold));
+    savedValueLabel.setColour (juce::Label::textColourId, juce::Colours::limegreen);
+    addAndMakeVisible (savedValueLabel);
+
+    detailLabel.setText ("Press Lock to analyze", juce::dontSendNotification);
+    detailLabel.setJustificationType (juce::Justification::centred);
+    detailLabel.setFont (juce::FontOptions (14.0f));
+    addAndMakeVisible (detailLabel);
+
+    lockButton.setButtonText ("Lock");
+    lockButton.setClickingTogglesState (true);
+    lockButton.onClick = [this]
+    {
+        const auto locked = lockButton.getToggleState();
+        audioProcessor.setLockEngaged (locked);
+        lockButton.setButtonText (locked ? "Locked" : "Lock");
+    };
+    addAndMakeVisible (lockButton);
 
     bassLowLabel.setJustificationType (juce::Justification::centred);
     kickLowLabel.setJustificationType (juce::Justification::centred);
@@ -58,6 +85,44 @@ void LowEndLockAudioProcessorEditor::timerCallback()
         juce::dontSendNotification);
     kickLowLabel.setColour (juce::Label::textColourId,
                             sideConnected ? juce::Colours::limegreen : juce::Colours::grey);
+
+    const auto locked = audioProcessor.isLockEngaged();
+    const auto ready = audioProcessor.isAnalysisReady();
+
+    if (locked && ready)
+    {
+        const auto savedDb = audioProcessor.getCancellationSavedDb();
+        savedValueLabel.setText (juce::String (savedDb >= 0.0f ? "+" : "")
+                                 + juce::String (savedDb, 1) + " dB",
+                                 juce::dontSendNotification);
+        savedValueLabel.setColour (juce::Label::textColourId,
+                                   savedDb >= 0.0f ? juce::Colours::limegreen : juce::Colours::orange);
+
+        const auto invert = audioProcessor.getSuggestedPolarity() < 0;
+        const auto delayMs = audioProcessor.getSuggestedDelaySamples()
+                             / audioProcessor.getCurrentSampleRate() * 1000.0;
+        const auto confidence = audioProcessor.getAnalysisConfidence() * 100.0f;
+
+        detailLabel.setText (juce::String ("Polarity: ") + (invert ? "Invert" : "Normal")
+                             + "    Delay: " + juce::String (delayMs, 2) + " ms"
+                             + "    Confidence: " + juce::String (confidence, 0) + "%",
+                             juce::dontSendNotification);
+    }
+    else if (locked)
+    {
+        savedValueLabel.setText ("Analyzing...", juce::dontSendNotification);
+        savedValueLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+        detailLabel.setText ("Capturing 2 s of low band", juce::dontSendNotification);
+    }
+    else
+    {
+        savedValueLabel.setText ("--", juce::dontSendNotification);
+        savedValueLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+        detailLabel.setText ("Press Lock to analyze", juce::dontSendNotification);
+    }
+
+    lockButton.setToggleState (locked, juce::dontSendNotification);
+    lockButton.setButtonText (locked ? "Locked" : "Lock");
 }
 
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
@@ -73,14 +138,20 @@ void LowEndLockAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds().reduced (20);
 
-    bounds.removeFromTop (40);
+    bounds.removeFromTop (40);                                   // title
 
-    auto statusBounds = bounds.removeFromBottom (64);
-    bassLowLabel.setBounds (statusBounds.removeFromTop (28));
-    kickLowLabel.setBounds (statusBounds.removeFromTop (28));
+    savedCaptionLabel.setBounds (bounds.removeFromTop (20));
+    savedValueLabel.setBounds (bounds.removeFromTop (52));
+    detailLabel.setBounds (bounds.removeFromTop (26));
+    bounds.removeFromTop (8);
+    lockButton.setBounds (bounds.removeFromTop (42));
+    bounds.removeFromTop (14);
+
+    auto metersBounds = bounds.removeFromBottom (56);
+    bassLowLabel.setBounds (metersBounds.removeFromTop (26));
+    kickLowLabel.setBounds (metersBounds.removeFromTop (26));
 
     auto controlsBounds = bounds.withSizeKeepingCentre (120, 140);
-
     gainLabel.setBounds (controlsBounds.removeFromTop (24));
     gainSlider.setBounds (controlsBounds);
 }

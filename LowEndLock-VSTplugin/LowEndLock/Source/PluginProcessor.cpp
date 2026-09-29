@@ -17,6 +17,7 @@ namespace
         bool invertPolarity = false;
         float delaySamples = 0.0f;
         float confidence = 0.0f;
+        float cancellationSavedDb = 0.0f;
     };
 
     PhaseAnalysisResult calculatePhaseAnalysis (const float* bass,
@@ -97,8 +98,31 @@ namespace
 
         result.valid = true;
         result.invertPolarity = bestCorrelation < 0.0f;
-        result.delaySamples = static_cast<float> (-bestLag);
+        result.delaySamples = static_cast<float> (bestLag);
         result.confidence = std::clamp (std::abs (bestCorrelation), 0.0f, 1.0f);
+
+        // Estimate how much low-frequency energy is recovered by aligning Bass
+        // to Kick (polarity + delay) instead of leaving them to cancel.
+        const auto polarity = result.invertPolarity ? -1.0 : 1.0;
+        double beforeEnergy = 0.0;
+        double afterEnergy = 0.0;
+
+        for (int i = 0; i < length; ++i)
+        {
+            const auto before = bass[i] + kick[i];
+            beforeEnergy += static_cast<double> (before) * before;
+
+            const auto src = i - bestLag;
+            const auto correctedBass = (src >= 0 && src < length)
+                ? static_cast<double> (polarity * bass[src])
+                : 0.0;
+            const auto after = correctedBass + kick[i];
+            afterEnergy += after * after;
+        }
+
+        result.cancellationSavedDb = static_cast<float> (
+            10.0 * std::log10 (afterEnergy / std::max (beforeEnergy, 1e-12)));
+
         return result;
     }
 
@@ -324,6 +348,22 @@ void LowEndLockAudioProcessor::requestAnalysis()
     notify();
 }
 
+void LowEndLockAudioProcessor::setLockEngaged (bool engaged)
+{
+    lockEngaged.store (engaged);
+
+    if (engaged)
+    {
+        requestAnalysis();
+    }
+    else
+    {
+        analysisResultReady.store (false);
+        cancellationSavedDb.store (0.0f);
+        analysisConfidence.store (0.0f);
+    }
+}
+
 void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<float>& main,
                                                     const juce::AudioBuffer<float>& side)
 {
@@ -371,6 +411,7 @@ void LowEndLockAudioProcessor::run()
             suggestedPolarity.store (result.invertPolarity ? -1 : 1);
             suggestedDelaySamples.store (result.delaySamples);
             analysisConfidence.store (result.confidence);
+            cancellationSavedDb.store (result.cancellationSavedDb);
             analysisResultReady.store (true);
         }
         else
@@ -415,8 +456,9 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     const auto mix = apvts.getRawParameterValue ("mix")->load();
     const auto analysisReady = analysisResultReady.load();
     const auto confidence = analysisConfidence.load();
+    const auto locked = lockEngaged.load();
 
-    if (analysisReady && confidence > 0.15f)
+    if (locked && analysisReady && confidence > 0.15f)
     {
         polaritySmoother.setTargetValue (suggestedPolarity.load() < 0 ? -1.0f : 1.0f);
         delaySmoother.setTargetValue (delayCenterSamples + suggestedDelaySamples.load());

@@ -45,8 +45,13 @@ public:
     float getSuggestedDelaySamples() const { return suggestedDelaySamples.load(); }
     int   getSuggestedPolarity() const { return suggestedPolarity.load(); }
     float getAnalysisConfidence() const { return analysisConfidence.load(); }
+    float getCancellationSavedDb() const { return cancellationSavedDb.load(); }
+    double getCurrentSampleRate() const { return currentSampleRate; }
+    bool isLockEngaged() const { return lockEngaged.load(); }
+    bool isAnalysisReady() const { return analysisResultReady.load(); }
 
     void requestAnalysis();
+    void setLockEngaged (bool engaged);
 
     //==============================================================================
     const juce::String getName() const override;
@@ -90,6 +95,8 @@ private:
     std::atomic<int> suggestedPolarity { 1 };
     std::atomic<float> suggestedDelaySamples { 0.0f };
     std::atomic<float> analysisConfidence { 0.0f };
+    std::atomic<float> cancellationSavedDb { 0.0f };
+    std::atomic<bool> lockEngaged { false };
 
     std::array<juce::dsp::IIR::Filter<float>, 2> mainHighPass;
     std::array<juce::dsp::IIR::Filter<float>, 2> mainLowPass;
