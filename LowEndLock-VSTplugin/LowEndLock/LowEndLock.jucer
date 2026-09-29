@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="VtQG0p" name="LowEndLock" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="Abram-Personal"
+              version="1.0.1" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" companyName="Abram-Personal"
               companyEmail="13520999247@163.com" cppLanguageStandard="20">
   <MAINGROUP id="j5Ce9a" name="LowEndLock">
     <GROUP id="{AE5B0DB7-36C9-1F52-166F-29D55D242D61}" name="Source">

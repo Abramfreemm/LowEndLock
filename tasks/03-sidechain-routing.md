@@ -43,4 +43,7 @@ JUCE 的 AU wrapper 把 `BusCountWritable` 映射为 `canAddBus()/canRemoveBus()
 - AU 校验（`auval -v aufx Vtqg Manu`）通过，默认 1 个输入总线，`ChannelLayout is Writable: T`。
 - `LowEndLock - Shared Code` 与 `LowEndLock - AU` 编译通过。
 - 组件已安装到 `~/Library/Audio/Plug-Ins/Components/LowEndLock.component`。
-- 待用户在 Logic 中验证侧链菜单与路由。
+- 用独立诊断程序（`tests/au_sidechain_probe.m`）确认：`kAudioUnitProperty_ElementCount` 在输入作用域可写、`SetBusCount(1→2)` 成功、`AudioUnitInitialize` 返回 noErr。即 AU 本身已正确声明 sidechain。
+- 发现 Logic 会缓存 AU 校验结果（AU 扫描日志显示 “62 not scanned”）。仅重启 Logic 不够，需「升级 AU 版本号」或「清空 AU 缓存」来强制重扫。
+- 已将插件版本从 1.0.0 升到 1.0.1（AU `version` 65536 → 65537），并清空 `~/Library/Caches/AudioUnitCache`，以强制 Logic 重新校验并识别 sidechain。
+- 待用户在 Logic 中（完全退出后重开）验证侧链菜单与路由。
