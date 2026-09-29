@@ -157,7 +157,7 @@ LowEndLockAudioProcessor::LowEndLockAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ),
+                       .withInput  ("Sidechain", juce::AudioChannelSet::stereo(), true)),
       Thread ("LowEndAnalysis"),
       apvts (*this, nullptr, "Parameters", createParameterLayout())
 {
@@ -372,45 +372,6 @@ void LowEndLockAudioProcessor::releaseResources()
 }
 
 //==============================================================================
-// Sidechain bus management.
-//
-// Logic Pro only shows a side-chain menu when the Audio Unit reports that its
-// input bus count is writable. JUCE's AU wrapper maps that to canAddBus() and
-// canRemoveBus() returning true. Logic then adds the sidechain as a second
-// input bus at runtime, so we do not declare it statically in the constructor.
-
-bool LowEndLockAudioProcessor::canAddBus (bool isInput) const
-{
-    return isInput && getBusCount (true) < 2;
-}
-
-bool LowEndLockAudioProcessor::canRemoveBus (bool isInput) const
-{
-    return isInput && getBusCount (true) > 1;
-}
-
-bool LowEndLockAudioProcessor::canApplyBusCountChange (bool isInput, bool isAddingBuses,
-                                                       BusProperties& outNewBusProperties)
-{
-    if (! isInput)
-        return false;
-
-    if (isAddingBuses && ! canAddBus (isInput))
-        return false;
-
-    if (! isAddingBuses && ! canRemoveBus (isInput))
-        return false;
-
-    if (isAddingBuses)
-    {
-        outNewBusProperties.busName = "Sidechain";
-        outNewBusProperties.defaultLayout = juce::AudioChannelSet::stereo();
-        outNewBusProperties.isActivatedByDefault = true;
-    }
-
-    return true;
-}
-
 #ifndef JucePlugin_PreferredChannelConfigurations
 bool LowEndLockAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
@@ -418,31 +379,11 @@ bool LowEndLockAudioProcessor::isBusesLayoutSupported (const BusesLayout& layout
     juce::ignoreUnused (layouts);
     return true;
   #else
-    const auto mainInput  = layouts.getMainInputChannelSet();
-    const auto mainOutput = layouts.getMainOutputChannelSet();
-
-    if (mainInput.isDisabled())
+    // the sidechain can take any layout, the main bus needs to be the same on the input and output
+    if (layouts.getMainInputChannelSet().isDisabled())
         return false;
 
-    if (mainOutput != mainInput)
-        return false;
-
-    if (mainInput != juce::AudioChannelSet::mono()
-        && mainInput != juce::AudioChannelSet::stereo())
-        return false;
-
-    // Validate the optional sidechain bus (added dynamically by the host).
-    for (int bus = 1; bus < layouts.inputBuses.size(); ++bus)
-    {
-        const auto sidechain = layouts.inputBuses.getReference (bus);
-
-        if (! sidechain.isDisabled()
-            && sidechain != juce::AudioChannelSet::mono()
-            && sidechain != juce::AudioChannelSet::stereo())
-            return false;
-    }
-
-    return true;
+    return layouts.getMainInputChannelSet() == layouts.getMainOutputChannelSet();
   #endif
 }
 #endif
@@ -451,11 +392,7 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
 {
     juce::ScopedNoDenormals noDenormals;
     auto mainInputOutput = getBusBuffer (buffer, true, 0);
-
-    const auto hasSidechain = getBusCount (true) > 1;
-    juce::AudioBuffer<float> sidechainInput;
-    if (hasSidechain)
-        sidechainInput = getBusBuffer (buffer, true, 1);
+    auto sidechainInput  = getBusBuffer (buffer, true, 1);
 
     mainLowRms.store (calculateBandLimitedRms (mainInputOutput, mainHighPass, mainLowPass));
     sideLowRms.store (calculateBandLimitedRms (sidechainInput, sideHighPass, sideLowPass));

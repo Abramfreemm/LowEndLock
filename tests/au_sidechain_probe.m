@@ -1,5 +1,5 @@
-// Throwaway diagnostic: verify that LowEndLock's AU reports a writable input
-// bus count and accepts Logic's sidechain bus addition (ElementCount 1 -> 2).
+// Diagnostic: verify that LowEndLock's AU exposes a static stereo sidechain
+// input bus (Input + Sidechain) and initializes cleanly.
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
@@ -7,7 +7,7 @@ int main()
 {
     AudioComponentDescription desc = {};
     desc.componentType    = kAudioUnitType_Effect;
-    desc.componentSubType = 'Vtqg';
+    desc.componentSubType = 'Vtqh';
     desc.componentManufacturer = 'Manu';
 
     AudioComponent comp = AudioComponentFindNext (NULL, &desc);
@@ -17,27 +17,15 @@ int main()
     OSStatus err = AudioComponentInstanceNew (comp, &au);
     if (err != noErr) { printf ("INSTANTIATE FAIL %d\n", (int) err); return 1; }
 
-    // 1) Is kAudioUnitProperty_ElementCount writable on the input scope?
+    // 1) Current input element count should be 2 (main + sidechain).
     UInt32 dataSize = 0;
-    Boolean writable = false;
-    err = AudioUnitGetPropertyInfo (au, kAudioUnitProperty_ElementCount,
-                                    kAudioUnitScope_Input, 0, &dataSize, &writable);
-    printf ("ElementCount writable=%s (getinfo err=%d)\n", writable ? "YES" : "NO", (int) err);
-
-    // 2) Current input element count.
     UInt32 inCount = 0;
     dataSize = sizeof (inCount);
     err = AudioUnitGetProperty (au, kAudioUnitProperty_ElementCount,
                                 kAudioUnitScope_Input, 0, &inCount, &dataSize);
-    printf ("Current input element count=%u (err=%d)\n", (unsigned) inCount, (int) err);
+    printf ("Input element count=%u (expect 2) (err=%d)\n", (unsigned) inCount, (int) err);
 
-    // 3) Try Logic's sidechain dance: add a second input bus.
-    UInt32 two = 2;
-    err = AudioUnitSetProperty (au, kAudioUnitProperty_ElementCount,
-                                kAudioUnitScope_Input, 0, &two, sizeof (two));
-    printf ("SetBusCount(2) err=%d\n", (int) err);
-
-    // 4) Set stereo stream formats on both input elements.
+    // 2) Set stereo stream formats on both input elements.
     AudioStreamBasicDescription fmt = {};
     fmt.mSampleRate = 44100.0;
     fmt.mFormatID = kAudioFormatLinearPCM;
@@ -53,9 +41,9 @@ int main()
     printf ("SetFormat bus0 err=%d\n", (int) err);
     err = AudioUnitSetProperty (au, kAudioUnitProperty_StreamFormat,
                                 kAudioUnitScope_Input, 1, &fmt, sizeof (fmt));
-    printf ("SetFormat bus1 err=%d\n", (int) err);
+    printf ("SetFormat bus1 (sidechain) err=%d\n", (int) err);
 
-    // 5) Initialize.
+    // 3) Initialize.
     err = AudioUnitInitialize (au);
     printf ("AudioUnitInitialize err=%d\n", (int) err);
 
