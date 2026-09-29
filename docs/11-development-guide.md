@@ -3,7 +3,7 @@
 ## 0. 当前状态
 
 - Xcode 27.0：已安装，许可已接受。
-- JUCE 9.0.1：已解压在 `/Users/abram/JUCE`。
+- JUCE 9.0.2：已解压在 `/Users/abram/JUCE`。
 - Projucer：`/Users/abram/JUCE/Projucer.app`。
 - 项目目录：`/Users/abram/Codex Projects/lowend-lock`。
 

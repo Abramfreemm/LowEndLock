@@ -1,6 +1,6 @@
 # Task 03 — Sidechain 输入路由
 
-- 状态：In Progress
+- 状态：代码已完成，待 Logic 最终验收
 - 依赖：Task 02
 
 ## 目标
@@ -18,32 +18,53 @@
 - DAW 能将 Kick 路由到 sidechain。
 - 插件能检测 sidechain 活动状态。
 
-## 根因结论（重要）
+## 根因结论（最终版，重要）
 
-Logic Pro 的 AU sidechain 菜单不是靠「静态声明第二个输入总线」触发的，
-而是靠「输入总线数量可写」（`BusCountWritable`）触发。Logic 会调用
-`kAudioUnitProperty_ElementCount` 把输入总线从 1 加到 2，把它当作 sidechain。
-JUCE 的 AU wrapper 把 `BusCountWritable` 映射为 `canAddBus()/canRemoveBus()` 返回 true。
-两者默认都返回 false，所以插件即使静态声明了第二个输入总线，Logic 也不会显示侧链菜单。
-这解释了「Logic 自带 Compressor 有 sidechain，而 LowEndLock 没有」。
+Logic Pro 识别一个 JUCE 插件的 AU sidechain，用的是 **静态声明的立体声第二输入总线**，
+和 JUCE 官方 `NoiseGate` 示例一致：
 
-## 修复方案
+```cpp
+AudioProcessor (BusesProperties()
+    .withInput  ("Input",     juce::AudioChannelSet::stereo(), true)
+    .withOutput ("Output",    juce::AudioChannelSet::stereo(), true)
+    .withInput  ("Sidechain", juce::AudioChannelSet::stereo(), true))
+```
 
-- 不再在构造函数里静态声明 `Sidechain` 总线，只保留主 `Input`（stereo）与 `Output`。
-- 重写 `canAddBus()` / `canRemoveBus()`，允许输入总线动态增删（最多 2 个输入总线）。
-- 重写 `canApplyBusCountChange()`，把动态新增的输入总线命名为 `Sidechain`、默认 stereo。
-- 更新 `isBusesLayoutSupported()`，校验可选的 sidechain 总线允许 mono / stereo / disabled。
-- `processBlock()` 现在用 `getBusCount(true) > 1` 安全判断 sidechain 是否存在，避免总线不存在时崩溃。
-- 修复 JUCE 9.0.2 自身的 bug：`JuceAU::SetBusCount()` 同步了错误的 bus 布局标签，
-  导致 Logic 加 sidechain 后 `AudioUnitInitialize` 返回 -10868。
+走过的弯路（都无效）：
+
+1. 把 sidechain 改成**单声道** —— Logic 不认。
+2. 改成**动态总线**（`canAddBus()`/`canRemoveBus()`）—— Logic 也不认（这是另一个机制）。
+
+最终确认：**静态 stereo sidechain** 才是 Logic 认的方式。
+
+另一个关键坑：**Logic 会按「插件身份」（type/subtype/manufacturer）缓存 AU 校验结果**，
+日志里长期显示 `62 not scanned`。只重启 Logic、只升级版本号、只清缓存都不够，
+必须**改变身份**才强制它重新识别。
+
+## 最终修复方案
+
+- 构造函数静态声明 `Sidechain` 输入总线，**stereo**，与主 `Input`、`Output` 并列。
+- `isBusesLayoutSupported()` 采用官方 NoiseGate 写法：
+  「主输入输出必须一致，sidechain 不限布局」。
+- 把 AU subtype 从 `Vtqg` 改为 `Vtqh`（`.jucer` 中 `pluginCode="Vtqh"`），
+  强制 Logic 把它当作全新插件重新校验。
+- 版本号升到 `1.0.1`（AU version 65537）。
+- `processBlock()` 直接读 bus 0（主）和 bus 1（sidechain）。
+- UI 显示 `Sidechain (Kick): Connected / No Signal`，并加颜色提示。
+
+## 附带修复
+
+- JUCE 9.0.2 自身的 AU wrapper bug：`JuceAU::SetBusCount()` 同步了错误的 bus 布局标签，
+  导致动态加 sidechain 时 `AudioUnitInitialize` 返回 -10868。
   补丁见 `patches/juce-9.0.2-logic-sidechain-buscount.patch`。
+  （本插件最终采用静态 stereo sidechain，不依赖动态加总线，但补丁仍保留以备后用。）
 
 ## 进度记录
 
-- AU 校验（`auval -v aufx Vtqg Manu`）通过，默认 1 个输入总线，`ChannelLayout is Writable: T`。
-- `LowEndLock - Shared Code` 与 `LowEndLock - AU` 编译通过。
+- 最终 AU 校验通过：`auval -v aufx Vtqh Manu` → `AU VALIDATION SUCCEEDED`。
+- 总线形态正确：
+  - Input：2 个总线（Input + Sidechain，均为 stereo）。
+  - Output：1 个总线。
+- 独立诊断 `tests/au_sidechain_probe.m` 确认：输入 element count = 2，两个输入总线都能设 stereo 格式并初始化成功。
 - 组件已安装到 `~/Library/Audio/Plug-Ins/Components/LowEndLock.component`。
-- 用独立诊断程序（`tests/au_sidechain_probe.m`）确认：`kAudioUnitProperty_ElementCount` 在输入作用域可写、`SetBusCount(1→2)` 成功、`AudioUnitInitialize` 返回 noErr。即 AU 本身已正确声明 sidechain。
-- 发现 Logic 会缓存 AU 校验结果（AU 扫描日志显示 “62 not scanned”）。仅重启 Logic 不够，需「升级 AU 版本号」或「清空 AU 缓存」来强制重扫。
-- 已将插件版本从 1.0.0 升到 1.0.1（AU `version` 65536 → 65537），并清空 `~/Library/Caches/AudioUnitCache`，以强制 Logic 重新校验并识别 sidechain。
-- 待用户在 Logic 中（完全退出后重开）验证侧链菜单与路由。
+- 待用户在 Logic 中（完全退出后重开）验证：顶部标题栏右侧出现「侧链」菜单，可选 Kick。

@@ -73,6 +73,10 @@ env[n] = alpha * env[n-1] + (1 - alpha) * abs(x[n])
 
 ### 4.4 互相关
 
+> 实现说明：分析参考信号先做 **sum-to-mono**。立体声信号按 `(L + R) / 2` 平均，
+> 单声道原样使用。这样避免只用左声道带来的偏差；校正阶段仍把同一极性/延时
+> 应用到主信号的所有声道。
+
 给定低频主信号 `b[n]` 和 sidechain 参考 `k[n]`，在一个有限 lag 范围内计算：
 
 ```text
@@ -235,4 +239,3 @@ current = target + smooth * (current - target)
 - 输出 clip 保护可选。
 - 所有除法使用 epsilon。
 - 分析能量为 0 时不产生结果。
-

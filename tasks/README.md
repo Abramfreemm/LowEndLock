@@ -5,7 +5,7 @@
 | 00 | 仓库与开发工作流初始化 | Done |
 | 01 | 空白 JUCE 插件骨架与首次构建 | Done |
 | 02 | 参数系统与 UI 基础 | In Progress |
-| 03 | Sidechain 输入路由 | In Progress |
+| 03 | Sidechain 输入路由 | Done（代码完成，待 Logic 验收） |
 | 04 | 低频分析与信号可视化 | In Progress |
 | 05 | Python 参考算法验证 | Done |
 | 06 | C++ 相位分析引擎 | In Progress |
@@ -20,3 +20,7 @@
 1. 先读 `tasks/00-repo-and-workflow.md`。
 2. 再读 `tasks/01-blank-plugin.md`。
 3. 后续按编号推进。
+
+## 更新记录
+
+- 2026-09-29：解决 Logic sidechain 不显示问题（静态 stereo sidechain + 改 subtype `Vtqg`→`Vtqh` 绕过缓存）；分析改为 sum-to-mono；sidechain 状态在 UI 可视化。详见 `tasks/03-sidechain-routing.md` 与 `handoffs/2026-09-29.md`。

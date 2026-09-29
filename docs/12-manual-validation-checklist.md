@@ -28,16 +28,17 @@
 
 | 步骤 | 预期结果 | 结果 |
 |---|---|---|
-| 在插件窗口选择 Sidechain 为 Kick 轨 | 路由成功 | ☐ |
-| 播放 Kick + Bass | 界面显示 `Kick Low: -x dB` | ☐ |
-| 移除 Sidechain 或静音 Kick | 界面显示 `Kick Low: no signal` | ☐ |
+| 在插件窗口顶部标题栏右侧找到「侧链」菜单 | 菜单出现（不是灰色） | ☐ |
+| 选择 Kick 轨作为 sidechain 源 | 路由成功 | ☐ |
+| 播放 Kick + Bass | 界面显示绿色 `Sidechain (Kick): Connected  -x dB` | ☐ |
+| 移除 Sidechain 或静音 Kick | 界面显示灰色 `Sidechain (Kick): No Signal` | ☐ |
 
 ## 3. Task 04：低频分析显示
 
 | 步骤 | 预期结果 | 结果 |
 |---|---|---|
 | 只播放 Bass | `Bass Low` 显示有效 dB | ☐ |
-| 只让 Kick 进入 Sidechain | `Kick Low` 显示有效 dB | ☐ |
+| 只让 Kick 进入 Sidechain | `Sidechain (Kick)` 显示有效 dB | ☐ |
 | 静音所有输入 | 两个都显示 `no signal` | ☐ |
 
 建议同时观察：如果输入主要是高频内容，低频显示应明显较低。
@@ -104,4 +105,3 @@ Reference analysis checks passed.
 先做能直接观察的 Task 02、03、04，再运行 Task 05 脚本，最后做 Task 06、07 的构建与稳定性检查。
 
 如果你想完整验证 Task 06 和 Task 07 的算法效果，我建议下一步先实现一个最小 `Lock` 按钮和结果显示，这样测试才闭环。
-
