@@ -51,10 +51,13 @@ void LowEndLockAudioProcessorEditor::timerCallback()
         : juce::String ("Bass Low: no signal"),
         juce::dontSendNotification);
 
-    kickLowLabel.setText (sideRms > 0.001f
-        ? juce::String ("Kick Low: ") + juce::String (juce::Decibels::gainToDecibels (sideRms), 1) + " dB"
-        : juce::String ("Kick Low: no signal"),
+    const auto sideConnected = sideRms > 0.001f;
+    kickLowLabel.setText (sideConnected
+        ? juce::String ("Sidechain (Kick): Connected  ") + juce::String (juce::Decibels::gainToDecibels (sideRms), 1) + " dB"
+        : juce::String ("Sidechain (Kick): No Signal"),
         juce::dontSendNotification);
+    kickLowLabel.setColour (juce::Label::textColourId,
+                            sideConnected ? juce::Colours::limegreen : juce::Colours::grey);
 }
 
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
