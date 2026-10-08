@@ -106,7 +106,21 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        g.fillAll (juce::Colours::black);
+        const auto panel = getLocalBounds().toFloat().reduced (2.0f);
+        const auto corner = 12.0f;
+
+        juce::ColourGradient panelGrad (juce::Colour (0xff1c2026), 0.0f, panel.getY(),
+                                        juce::Colour (0xff14171c), 0.0f, panel.getBottom(), false);
+        g.setGradientFill (panelGrad);
+        g.fillRoundedRectangle (panel, corner);
+
+        juce::ColourGradient highlight (juce::Colour (0x16ffffff), 0.0f, panel.getY(),
+                                        juce::Colours::transparentBlack, 0.0f, panel.getY() + panel.getHeight() * 0.4f, false);
+        g.setGradientFill (highlight);
+        g.fillRoundedRectangle (panel, corner);
+
+        g.setColour (juce::Colour (0x16ffffff));
+        g.drawRoundedRectangle (panel.reduced (0.5f), corner, 1.0f);
 
         std::vector<float> main, side;
         processor.getScopeData (main, side);

@@ -15,7 +15,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
 {
     setLookAndFeel (&lookAndFeel);
 
-    setSize (440, 640);
+    setSize (440, 700);
 
     presetLabel.setText ("Preset", juce::dontSendNotification);
     presetLabel.setJustificationType (juce::Justification::right);
@@ -254,9 +254,13 @@ void LowEndLockAudioProcessorEditor::timerCallback()
 
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
+    auto area = getLocalBounds().toFloat();
+    juce::ColourGradient bgGradient (juce::Colour (0xff1d2026), 0.0f, 0.0f,
+                                     juce::Colour (0xff0f1114), 0.0f, area.getHeight(), false);
+    g.setGradientFill (bgGradient);
+    g.fillAll();
 
-    g.setColour (getLookAndFeel().findColour (juce::Label::textColourId));
+    g.setColour (juce::Colour (0xffe8eaed));
     g.setFont (juce::FontOptions (18.0f, juce::Font::bold));
     g.drawText ("Low-End Lock", getLocalBounds().removeFromTop (40), juce::Justification::centred, true);
 }
@@ -276,7 +280,7 @@ void LowEndLockAudioProcessorEditor::resized()
     savedValueLabel.setBounds (bounds.removeFromTop (52));
     detailLabel.setBounds (bounds.removeFromTop (26));
     bounds.removeFromTop (8);
-    waveformScope.setBounds (bounds.removeFromTop (110));
+    waveformScope.setBounds (bounds.removeFromTop (170));
     bounds.removeFromTop (8);
 
     auto buttonsRow = bounds.removeFromTop (42);
