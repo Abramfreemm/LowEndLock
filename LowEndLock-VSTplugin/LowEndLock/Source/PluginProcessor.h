@@ -80,6 +80,7 @@ private:
     void run() override;
     void captureAnalysisData (const juce::AudioBuffer<float>& main,
                               const juce::AudioBuffer<float>& side);
+    void updateLowCutFilters (float lowCutHz);
 
     //==============================================================================
     juce::AudioProcessorValueTreeState apvts;
@@ -117,6 +118,7 @@ private:
     std::array<juce::dsp::IIR::Filter<float>, 2> correctionLowPass;
     std::unique_ptr<juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear>> correctionDelay;
     float delayCenterSamples = 0.0f;
+    float currentLowCutHz = 150.0f;
 
     juce::CriticalSection scopeLock;
     std::vector<float> scopeMain;

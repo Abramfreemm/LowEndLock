@@ -185,6 +185,28 @@ namespace
             juce::NormalisableRange<float> (0.0f, 1.0f, 0.01f),
             1.0f));
 
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "manual", 1 },
+            "Manual Mode",
+            false));
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "invert", 1 },
+            "Invert Polarity",
+            false));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "delayMs", 1 },
+            "Delay",
+            juce::NormalisableRange<float> (-20.0f, 20.0f, 0.1f),
+            0.0f));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "lowCut", 1 },
+            "Low Cut",
+            juce::NormalisableRange<float> (50.0f, 300.0f, 1.0f),
+            150.0f));
+
         return layout;
     }
 }
@@ -281,8 +303,10 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     const auto initialGainDb = apvts.getRawParameterValue ("gain")->load();
     gainSmoother.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (initialGainDb));
 
+    currentLowCutHz = apvts.getRawParameterValue ("lowCut")->load();
+
     const auto highPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass (sampleRate, 20.0f);
-    const auto lowPassCoefficients  = juce::dsp::IIR::Coefficients<float>::makeLowPass  (sampleRate, 150.0f);
+    const auto lowPassCoefficients  = juce::dsp::IIR::Coefficients<float>::makeLowPass  (sampleRate, currentLowCutHz);
 
     for (int channel = 0; channel < 2; ++channel)
     {
@@ -334,7 +358,7 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
         static_cast<size_t> (maxDelaySamples));
     correctionDelay->prepare ({ sampleRate, static_cast<juce::uint32> (samplesPerBlock), 2 });
 
-    const auto correctionLowPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeLowPass (sampleRate, 150.0f);
+    const auto correctionLowPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeLowPass (sampleRate, currentLowCutHz);
     for (int channel = 0; channel < 2; ++channel)
     {
         correctionLowPass[channel].coefficients = correctionLowPassCoefficients;
@@ -404,6 +428,30 @@ void LowEndLockAudioProcessor::getScopeData (std::vector<float>& main, std::vect
         main[static_cast<size_t> (i)] = scopeMain[static_cast<size_t> (src)];
         side[static_cast<size_t> (i)] = scopeSide[static_cast<size_t> (src)];
     }
+}
+
+void LowEndLockAudioProcessor::updateLowCutFilters (float lowCutHz)
+{
+    const auto lowPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeLowPass (currentSampleRate, lowCutHz);
+
+    for (int channel = 0; channel < 2; ++channel)
+    {
+        mainLowPass[channel].coefficients = lowPassCoefficients;
+        sideLowPass[channel].coefficients = lowPassCoefficients;
+        correctionLowPass[channel].coefficients = lowPassCoefficients;
+        mainLowPass[channel].reset();
+        sideLowPass[channel].reset();
+        correctionLowPass[channel].reset();
+    }
+
+    analysisMainLowPass[0].coefficients = lowPassCoefficients;
+    analysisSideLowPass[0].coefficients = lowPassCoefficients;
+    scopeMainLowPass[0].coefficients = lowPassCoefficients;
+    scopeSideLowPass[0].coefficients = lowPassCoefficients;
+    analysisMainLowPass[0].reset();
+    analysisSideLowPass[0].reset();
+    scopeMainLowPass[0].reset();
+    scopeSideLowPass[0].reset();
 }
 
 void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<float>& main,
@@ -490,6 +538,13 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     auto mainInputOutput = getBusBuffer (buffer, true, 0);
     auto sidechainInput  = getBusBuffer (buffer, true, 1);
 
+    const auto lowCutHz = apvts.getRawParameterValue ("lowCut")->load();
+    if (std::abs (lowCutHz - currentLowCutHz) > 0.5f)
+    {
+        currentLowCutHz = lowCutHz;
+        updateLowCutFilters (lowCutHz);
+    }
+
     mainLowRms.store (calculateBandLimitedRms (mainInputOutput, mainHighPass, mainLowPass));
     sideLowRms.store (calculateBandLimitedRms (sidechainInput, sideHighPass, sideLowPass));
 
@@ -519,10 +574,22 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     const auto locked = lockEngaged.load();
     const auto bypassed = bypassCorrection.load();
 
-    if (locked && analysisReady && confidence > 0.15f && ! bypassed)
+    const auto manual = apvts.getRawParameterValue ("manual")->load() > 0.5f;
+    const auto correctionActive = ! bypassed
+                                  && (manual || (locked && analysisReady && confidence > 0.15f));
+
+    if (correctionActive)
     {
-        polaritySmoother.setTargetValue (suggestedPolarity.load() < 0 ? -1.0f : 1.0f);
-        delaySmoother.setTargetValue (delayCenterSamples + suggestedDelaySamples.load());
+        const auto polarity = manual
+            ? (apvts.getRawParameterValue ("invert")->load() > 0.5f ? -1.0f : 1.0f)
+            : (suggestedPolarity.load() < 0 ? -1.0f : 1.0f);
+
+        const auto delaySamples = manual
+            ? static_cast<float> (apvts.getRawParameterValue ("delayMs")->load() / 1000.0 * currentSampleRate)
+            : suggestedDelaySamples.load();
+
+        polaritySmoother.setTargetValue (polarity);
+        delaySmoother.setTargetValue (delayCenterSamples + delaySamples);
     }
     else
     {

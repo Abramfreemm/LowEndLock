@@ -141,8 +141,21 @@ private:
     juce::Slider gainSlider;
     juce::TextButton lockButton;
     juce::TextButton abButton;
+    juce::TextButton manualButton;
+    juce::ToggleButton invertButton;
+    juce::Label delayLabel;
+    juce::Label mixLabel;
+    juce::Label lowCutLabel;
+    juce::Slider delaySlider;
+    juce::Slider mixSlider;
+    juce::Slider lowCutSlider;
     WaveformScope waveformScope;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> manualAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> invertAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> delayAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> mixAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> lowCutAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessorEditor)
 };

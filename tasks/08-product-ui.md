@@ -26,5 +26,5 @@
 - ✅ `Lock` 按钮：一键触发 2 秒采集与分析，完成后自动应用修正；细节行显示 Polarity / Delay / Confidence。
 - ✅ A/B 对比：`B (fix)` / `A (orig)` 按钮，旁路切换听对齐前后差别，不重新分析。
 - ✅ 波形可视化 `WaveformScope`：实时显示 Kick（青）、Bass（橙）低频波形，锁定后叠加绿色 `Fixed` 修正后的 Bass 轨迹。
-- ⬜ 手动覆盖：Polarity / Delay / Mix / Low Cut。
+- ✅ 手动覆盖：`Manual` 模式 + `Invert Polarity` + `Delay`(ms) + `Mix` + `Low Cut`(Hz)，全部接入 APVTS（可自动化/保存）。
 - ⬜ UI 打磨与预设。

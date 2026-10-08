@@ -13,7 +13,7 @@
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), waveformScope (p)
 {
-    setSize (440, 560);
+    setSize (440, 680);
 
     gainLabel.setText ("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType (juce::Justification::centred);
@@ -63,6 +63,50 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     addAndMakeVisible (abButton);
 
     addAndMakeVisible (waveformScope);
+
+    manualButton.setButtonText ("Auto");
+    manualButton.setClickingTogglesState (true);
+    manualButton.onClick = [this]
+    {
+        manualButton.setButtonText (manualButton.getToggleState() ? "Manual" : "Auto");
+    };
+    manualAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        audioProcessor.getAPVTS(), "manual", manualButton);
+    addAndMakeVisible (manualButton);
+
+    invertButton.setButtonText ("Invert Polarity");
+    invertAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        audioProcessor.getAPVTS(), "invert", invertButton);
+    addAndMakeVisible (invertButton);
+
+    delayLabel.setText ("Delay", juce::dontSendNotification);
+    delayLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (delayLabel);
+    delaySlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    delaySlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 54, 20);
+    delaySlider.setTextValueSuffix (" ms");
+    delayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        audioProcessor.getAPVTS(), "delayMs", delaySlider);
+    addAndMakeVisible (delaySlider);
+
+    mixLabel.setText ("Mix", juce::dontSendNotification);
+    mixLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (mixLabel);
+    mixSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    mixSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 54, 20);
+    mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        audioProcessor.getAPVTS(), "mix", mixSlider);
+    addAndMakeVisible (mixSlider);
+
+    lowCutLabel.setText ("Low Cut", juce::dontSendNotification);
+    lowCutLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (lowCutLabel);
+    lowCutSlider.setSliderStyle (juce::Slider::LinearHorizontal);
+    lowCutSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 54, 20);
+    lowCutSlider.setTextValueSuffix (" Hz");
+    lowCutAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
+        audioProcessor.getAPVTS(), "lowCut", lowCutSlider);
+    addAndMakeVisible (lowCutSlider);
 
     bassLowLabel.setJustificationType (juce::Justification::centred);
     kickLowLabel.setJustificationType (juce::Justification::centred);
@@ -139,6 +183,8 @@ void LowEndLockAudioProcessorEditor::timerCallback()
     lockButton.setButtonText (locked ? "Locked" : "Lock");
     abButton.setToggleState (bypassed, juce::dontSendNotification);
     abButton.setButtonText (bypassed ? "A (orig)" : "B (fix)");
+    const auto manual = audioProcessor.getAPVTS().getRawParameterValue ("manual")->load() > 0.5f;
+    manualButton.setButtonText (manual ? "Manual" : "Auto");
 
     waveformScope.repaint();
 }
@@ -166,12 +212,32 @@ void LowEndLockAudioProcessorEditor::resized()
     bounds.removeFromTop (8);
 
     auto buttonsRow = bounds.removeFromTop (42);
-    const auto buttonWidth = (buttonsRow.getWidth() - 8) / 2;
+    const auto buttonWidth = (buttonsRow.getWidth() - 16) / 3;
     lockButton.setBounds (buttonsRow.removeFromLeft (buttonWidth));
     buttonsRow.removeFromLeft (8);
-    abButton.setBounds (buttonsRow);
+    abButton.setBounds (buttonsRow.removeFromLeft (buttonWidth));
+    buttonsRow.removeFromLeft (8);
+    manualButton.setBounds (buttonsRow);
 
-    bounds.removeFromTop (14);
+    bounds.removeFromTop (8);
+
+    auto manualRow1 = bounds.removeFromTop (32);
+    invertButton.setBounds (manualRow1.removeFromLeft (110));
+    manualRow1.removeFromLeft (8);
+    delayLabel.setBounds (manualRow1.removeFromLeft (40));
+    delaySlider.setBounds (manualRow1);
+
+    bounds.removeFromTop (4);
+
+    auto manualRow2 = bounds.removeFromTop (32);
+    const auto half = manualRow2.getWidth() / 2;
+    auto mixHalf = manualRow2.removeFromLeft (half);
+    mixLabel.setBounds (mixHalf.removeFromLeft (44));
+    mixSlider.setBounds (mixHalf);
+    lowCutLabel.setBounds (manualRow2.removeFromLeft (44));
+    lowCutSlider.setBounds (manualRow2);
+
+    bounds.removeFromTop (8);
 
     auto metersBounds = bounds.removeFromBottom (56);
     bassLowLabel.setBounds (metersBounds.removeFromTop (26));
