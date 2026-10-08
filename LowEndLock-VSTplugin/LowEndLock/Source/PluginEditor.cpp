@@ -11,9 +11,9 @@
 
 //==============================================================================
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+    : AudioProcessorEditor (&p), audioProcessor (p), waveformScope (p)
 {
-    setSize (440, 460);
+    setSize (440, 560);
 
     gainLabel.setText ("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType (juce::Justification::centred);
@@ -61,6 +61,8 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
         audioProcessor.setBypassCorrection (abButton.getToggleState());
     };
     addAndMakeVisible (abButton);
+
+    addAndMakeVisible (waveformScope);
 
     bassLowLabel.setJustificationType (juce::Justification::centred);
     kickLowLabel.setJustificationType (juce::Justification::centred);
@@ -137,6 +139,8 @@ void LowEndLockAudioProcessorEditor::timerCallback()
     lockButton.setButtonText (locked ? "Locked" : "Lock");
     abButton.setToggleState (bypassed, juce::dontSendNotification);
     abButton.setButtonText (bypassed ? "A (orig)" : "B (fix)");
+
+    waveformScope.repaint();
 }
 
 void LowEndLockAudioProcessorEditor::paint (juce::Graphics& g)
@@ -157,6 +161,8 @@ void LowEndLockAudioProcessorEditor::resized()
     savedCaptionLabel.setBounds (bounds.removeFromTop (20));
     savedValueLabel.setBounds (bounds.removeFromTop (52));
     detailLabel.setBounds (bounds.removeFromTop (26));
+    bounds.removeFromTop (8);
+    waveformScope.setBounds (bounds.removeFromTop (110));
     bounds.removeFromTop (8);
 
     auto buttonsRow = bounds.removeFromTop (42);

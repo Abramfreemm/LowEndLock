@@ -10,6 +10,7 @@
 
 #include <array>
 #include <atomic>
+#include <vector>
 #include <JuceHeader.h>
 #include <juce_dsp/juce_dsp.h>
 
@@ -54,6 +55,7 @@ public:
     void requestAnalysis();
     void setLockEngaged (bool engaged);
     void setBypassCorrection (bool bypass);
+    void getScopeData (std::vector<float>& main, std::vector<float>& side) const;
 
     //==============================================================================
     const juce::String getName() const override;
@@ -115,6 +117,16 @@ private:
     std::array<juce::dsp::IIR::Filter<float>, 2> correctionLowPass;
     std::unique_ptr<juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear>> correctionDelay;
     float delayCenterSamples = 0.0f;
+
+    juce::CriticalSection scopeLock;
+    std::vector<float> scopeMain;
+    std::vector<float> scopeSide;
+    int scopeWriteIndex = 0;
+    int scopeSize = 0;
+    std::array<juce::dsp::IIR::Filter<float>, 1> scopeMainHighPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> scopeMainLowPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> scopeSideHighPass;
+    std::array<juce::dsp::IIR::Filter<float>, 1> scopeSideLowPass;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LowEndLockAudioProcessor)

@@ -314,6 +314,21 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     analysisSideBuffer.clear();
     analysisWriteIndex = 0;
 
+    scopeSize = 4096;
+    scopeMain.assign (static_cast<size_t> (scopeSize), 0.0f);
+    scopeSide.assign (static_cast<size_t> (scopeSize), 0.0f);
+    scopeWriteIndex = 0;
+
+    scopeMainHighPass[0].coefficients = highPassCoefficients;
+    scopeMainLowPass [0].coefficients = lowPassCoefficients;
+    scopeSideHighPass[0].coefficients = highPassCoefficients;
+    scopeSideLowPass [0].coefficients = lowPassCoefficients;
+
+    scopeMainHighPass[0].reset();
+    scopeMainLowPass [0].reset();
+    scopeSideHighPass[0].reset();
+    scopeSideLowPass [0].reset();
+
     const auto maxDelaySamples = static_cast<int> (sampleRate * 0.04) + 8;
     correctionDelay = std::make_unique<juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear>> (
         static_cast<size_t> (maxDelaySamples));
@@ -367,6 +382,28 @@ void LowEndLockAudioProcessor::setLockEngaged (bool engaged)
 void LowEndLockAudioProcessor::setBypassCorrection (bool bypass)
 {
     bypassCorrection.store (bypass);
+}
+
+void LowEndLockAudioProcessor::getScopeData (std::vector<float>& main, std::vector<float>& side) const
+{
+    const juce::ScopedLock sl (scopeLock);
+
+    if (scopeSize <= 0)
+    {
+        main.clear();
+        side.clear();
+        return;
+    }
+
+    main.resize (static_cast<size_t> (scopeSize));
+    side.resize (static_cast<size_t> (scopeSize));
+
+    for (int i = 0; i < scopeSize; ++i)
+    {
+        const auto src = (scopeWriteIndex + i) % scopeSize;
+        main[static_cast<size_t> (i)] = scopeMain[static_cast<size_t> (src)];
+        side[static_cast<size_t> (i)] = scopeSide[static_cast<size_t> (src)];
+    }
 }
 
 void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<float>& main,
@@ -457,6 +494,24 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     sideLowRms.store (calculateBandLimitedRms (sidechainInput, sideHighPass, sideLowPass));
 
     captureAnalysisData (mainInputOutput, sidechainInput);
+
+    if (scopeSize > 0)
+    {
+        const juce::ScopedLock sl (scopeLock);
+
+        for (int sample = 0; sample < mainInputOutput.getNumSamples(); ++sample)
+        {
+            const auto mainMono = mixToMonoSample (mainInputOutput, sample);
+            const auto sideMono = mixToMonoSample (sidechainInput, sample);
+
+            scopeMain[static_cast<size_t> (scopeWriteIndex)] =
+                scopeMainLowPass[0].processSample (scopeMainHighPass[0].processSample (mainMono));
+            scopeSide[static_cast<size_t> (scopeWriteIndex)] =
+                scopeSideLowPass[0].processSample (scopeSideHighPass[0].processSample (sideMono));
+
+            scopeWriteIndex = (scopeWriteIndex + 1) % scopeSize;
+        }
+    }
 
     const auto mix = apvts.getRawParameterValue ("mix")->load();
     const auto analysisReady = analysisResultReady.load();
