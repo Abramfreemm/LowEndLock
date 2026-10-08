@@ -33,3 +33,7 @@ venv/
 /logic0929-3.png
 /logic0929-4.png
 /logic0929-5.png
+
+# Release packaging artifacts (binaries + zip)
+/release/LowEndLock-1.0.1-mac/
+/release/*.zip
