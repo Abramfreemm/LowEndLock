@@ -11,7 +11,7 @@
 | 06 | C++ 相位分析引擎 | In Progress |
 | 07 | 极性与分数延迟补偿 | In Progress |
 | 08 | 产品 UI 与交互闭环 | Done |
-| 09 | 实时性能与稳定性 | Not Started |
+| 09 | 实时性能与稳定性 | In Progress |
 | 10 | DAW 集成测试与 Beta | Not Started |
 | 11 | 发布、许可与商业化准备 | Not Started |
 

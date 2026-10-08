@@ -369,6 +369,7 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     polaritySmoother.setCurrentAndTargetValue (1.0f);
 
     delayCenterSamples = static_cast<float> (maxDelaySamples) * 0.5f;
+    setLatencySamples (juce::roundToInt (delayCenterSamples));
     delaySmoother.reset (sampleRate, 0.05);
     delaySmoother.setCurrentAndTargetValue (delayCenterSamples);
 
