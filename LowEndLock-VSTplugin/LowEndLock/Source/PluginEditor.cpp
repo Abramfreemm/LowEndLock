@@ -13,7 +13,19 @@
 LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor& p)
     : AudioProcessorEditor (&p), audioProcessor (p), waveformScope (p)
 {
-    setSize (440, 680);
+    lookAndFeel.setColourScheme (juce::LookAndFeel_V4::getDarkColourScheme());
+    setLookAndFeel (&lookAndFeel);
+
+    setSize (440, 720);
+
+    presetLabel.setText ("Preset", juce::dontSendNotification);
+    presetLabel.setJustificationType (juce::Justification::right);
+    addAndMakeVisible (presetLabel);
+
+    presetBox.addItemList ({ "Default", "Auto Tight", "Polarity Flip", "Deep Blend", "Wide Low" }, 1);
+    presetBox.setSelectedId (1);
+    presetBox.onChange = [this] { applyPreset (presetBox.getSelectedId()); };
+    addAndMakeVisible (presetBox);
 
     gainLabel.setText ("Gain", juce::dontSendNotification);
     gainLabel.setJustificationType (juce::Justification::centred);
@@ -121,6 +133,58 @@ LowEndLockAudioProcessorEditor::~LowEndLockAudioProcessorEditor()
     stopTimer();
 }
 
+void LowEndLockAudioProcessorEditor::applyPreset (int presetId)
+{
+    auto& apvts = audioProcessor.getAPVTS();
+
+    auto set = [&apvts] (const juce::String& paramId, float value)
+    {
+        if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (apvts.getParameter (paramId)))
+            p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+
+    switch (presetId)
+    {
+        case 2:  // Auto Tight
+            set ("mix", 1.0f);
+            set ("manual", 0.0f);
+            set ("invert", 0.0f);
+            set ("delayMs", 0.0f);
+            set ("lowCut", 120.0f);
+            break;
+
+        case 3:  // Polarity Flip
+            set ("mix", 1.0f);
+            set ("manual", 1.0f);
+            set ("invert", 1.0f);
+            set ("delayMs", 0.0f);
+            break;
+
+        case 4:  // Deep Blend
+            set ("mix", 0.6f);
+            set ("manual", 0.0f);
+            set ("invert", 0.0f);
+            set ("delayMs", 0.0f);
+            set ("lowCut", 180.0f);
+            break;
+
+        case 5:  // Wide Low
+            set ("mix", 1.0f);
+            set ("manual", 0.0f);
+            set ("lowCut", 250.0f);
+            break;
+
+        case 1:  // Default
+        default:
+            set ("mix", 1.0f);
+            set ("manual", 0.0f);
+            set ("invert", 0.0f);
+            set ("delayMs", 0.0f);
+            set ("lowCut", 150.0f);
+            break;
+    }
+}
+
 //==============================================================================
 void LowEndLockAudioProcessorEditor::timerCallback()
 {
@@ -203,6 +267,11 @@ void LowEndLockAudioProcessorEditor::resized()
     auto bounds = getLocalBounds().reduced (20);
 
     bounds.removeFromTop (40);                                   // title
+
+    auto presetRow = bounds.removeFromTop (30);
+    presetLabel.setBounds (presetRow.removeFromLeft (70));
+    presetBox.setBounds (presetRow);
+    bounds.removeFromTop (4);
 
     savedCaptionLabel.setBounds (bounds.removeFromTop (20));
     savedValueLabel.setBounds (bounds.removeFromTop (52));

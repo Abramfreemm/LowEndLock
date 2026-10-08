@@ -122,6 +122,8 @@ public:
     LowEndLockAudioProcessorEditor (LowEndLockAudioProcessor&);
     ~LowEndLockAudioProcessorEditor() override;
 
+    void applyPreset (int presetId);
+
     //==============================================================================
     void timerCallback() override;
     void paint (juce::Graphics&) override;
@@ -132,6 +134,9 @@ private:
     // access the processor object that created it.
     LowEndLockAudioProcessor& audioProcessor;
 
+    juce::LookAndFeel_V4 lookAndFeel;
+    juce::Label presetLabel;
+    juce::ComboBox presetBox;
     juce::Label gainLabel;
     juce::Label bassLowLabel;
     juce::Label kickLowLabel;

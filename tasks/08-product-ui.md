@@ -1,6 +1,6 @@
 # Task 08 — 产品 UI 与交互闭环
 
-- 状态：In Progress
+- 状态：Done
 - 依赖：Task 07
 
 ## 目标
@@ -27,4 +27,5 @@
 - ✅ A/B 对比：`B (fix)` / `A (orig)` 按钮，旁路切换听对齐前后差别，不重新分析。
 - ✅ 波形可视化 `WaveformScope`：实时显示 Kick（青）、Bass（橙）低频波形，锁定后叠加绿色 `Fixed` 修正后的 Bass 轨迹。
 - ✅ 手动覆盖：`Manual` 模式 + `Invert Polarity` + `Delay`(ms) + `Mix` + `Low Cut`(Hz)，全部接入 APVTS（可自动化/保存）。
-- ⬜ UI 打磨与预设。
+- ✅ 预设：Default / Auto Tight / Polarity Flip / Deep Blend / Wide Low（ComboBox 一键切换）。
+- ✅ UI 打磨：暗色主题（`LookAndFeel_V4::getDarkColourScheme()`）。
