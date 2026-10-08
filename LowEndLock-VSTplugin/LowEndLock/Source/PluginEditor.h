@@ -12,6 +12,90 @@
 #include "PluginProcessor.h"
 
 //==============================================================================
+/** Sonible-inspired flat dark look: minimal rotary knobs with a value arc and
+    pointer dot, a deep near-black panel and a single teal accent colour.
+*/
+class LowEndLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    LowEndLookAndFeel()
+    {
+        const auto bg       = juce::Colour (0xff14161a);
+        const auto panel    = juce::Colour (0xff1b1e23);
+        const auto outline  = juce::Colour (0xff2a2e35);
+        const auto text     = juce::Colour (0xffe8eaed);
+        const auto muted    = juce::Colour (0xff8a9099);
+        const auto accent   = juce::Colour (0xff2dd4bf);
+
+        setColour (juce::ResizableWindow::backgroundColourId, bg);
+        setColour (juce::Slider::rotarySliderFillColourId, accent);
+        setColour (juce::Slider::rotarySliderOutlineColourId, outline);
+        setColour (juce::Slider::thumbColourId, accent);
+        setColour (juce::Slider::textBoxTextColourId, text);
+        setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+        setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+        setColour (juce::Label::textColourId, text);
+        setColour (juce::Label::textWhenEditingColourId, text);
+        setColour (juce::TextButton::buttonColourId, panel);
+        setColour (juce::TextButton::buttonOnColourId, accent);
+        setColour (juce::TextButton::textColourOffId, text);
+        setColour (juce::TextButton::textColourOnId, juce::Colour (0xff0b0d0f));
+        setColour (juce::ComboBox::backgroundColourId, panel);
+        setColour (juce::ComboBox::textColourId, text);
+        setColour (juce::ComboBox::outlineColourId, outline);
+        setColour (juce::ComboBox::arrowColourId, accent);
+        setColour (juce::PopupMenu::backgroundColourId, panel);
+        setColour (juce::PopupMenu::textColourId, text);
+        setColour (juce::PopupMenu::highlightedBackgroundColourId, accent);
+        setColour (juce::PopupMenu::highlightedTextColourId, juce::Colour (0xff0b0d0f));
+        setColour (juce::ToggleButton::tickColourId, accent);
+        setColour (juce::ToggleButton::tickDisabledColourId, muted);
+    }
+
+    void drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
+                           float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle,
+                           juce::Slider& slider) override
+    {
+        const auto radius = juce::jmin (width, height) * 0.5f - 5.0f;
+        const auto centreX = x + width * 0.5f;
+        const auto centreY = y + height * 0.5f;
+
+        if (radius <= 4.0f)
+            return;
+
+        g.setColour (juce::Colour (0xff1b1e23));
+        g.fillEllipse (centreX - radius, centreY - radius, radius * 2.0f, radius * 2.0f);
+
+        g.setColour (juce::Colour (0xff2a2e35));
+        g.drawEllipse (centreX - radius, centreY - radius, radius * 2.0f, radius * 2.0f, 1.5f);
+
+        const auto arcRadius = radius - 3.5f;
+        const auto angleStart = rotaryStartAngle;
+        const auto angleEnd = rotaryStartAngle + sliderPosProportional * (rotaryEndAngle - rotaryStartAngle);
+
+        juce::Path arc;
+        constexpr int segments = 48;
+        const auto step = (angleEnd - angleStart) / static_cast<float> (segments);
+        for (int i = 0; i <= segments; ++i)
+        {
+            const auto a = angleStart + static_cast<float> (i) * step;
+            const auto px = centreX + arcRadius * std::sin (a);
+            const auto py = centreY - arcRadius * std::cos (a);
+            if (i == 0) arc.startNewSubPath (px, py);
+            else        arc.lineTo (px, py);
+        }
+
+        g.setColour (slider.findColour (juce::Slider::rotarySliderFillColourId));
+        g.strokePath (arc, juce::PathStrokeType (2.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+        const auto dotRadius = arcRadius;
+        const auto dotX = centreX + dotRadius * std::sin (angleEnd);
+        const auto dotY = centreY - dotRadius * std::cos (angleEnd);
+        g.fillEllipse (dotX - 2.5f, dotY - 2.5f, 5.0f, 5.0f);
+    }
+};
+
+//==============================================================================
 /** A live low-band scope showing Bass (main) and Kick (sidechain) waveforms,
     plus the corrected Bass trace when the correction is locked in.
 */
@@ -134,7 +218,7 @@ private:
     // access the processor object that created it.
     LowEndLockAudioProcessor& audioProcessor;
 
-    juce::LookAndFeel_V4 lookAndFeel;
+    LowEndLookAndFeel lookAndFeel;
     juce::Label presetLabel;
     juce::ComboBox presetBox;
     juce::Label gainLabel;
