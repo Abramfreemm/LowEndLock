@@ -23,3 +23,4 @@ Low-End Lock 1.0.1 — Beta (macOS)
 ----
 - Logic 使用 AU；Ableton / REAPER 使用 AU 或 VST3。
 - 本版本固有约 20ms 延迟（相位对齐需要），适合混音、不适合实时监听。
+- 纯本地 DSP，无网络访问、无文件读写、不收集任何数据。
