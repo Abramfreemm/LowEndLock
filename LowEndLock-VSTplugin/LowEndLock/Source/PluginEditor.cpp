@@ -110,7 +110,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
         audioProcessor.getAPVTS(), "mix", mixSlider);
     addAndMakeVisible (mixSlider);
 
-    lowCutLabel.setText ("Low Cut", juce::dontSendNotification);
+    lowCutLabel.setText ("Low Band", juce::dontSendNotification);
     lowCutLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (lowCutLabel);
     lowCutSlider.setSliderStyle (juce::Slider::LinearHorizontal);

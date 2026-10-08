@@ -203,7 +203,7 @@ namespace
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "lowCut", 1 },
-            "Low Cut",
+            "Low Band",
             juce::NormalisableRange<float> (50.0f, 300.0f, 1.0f),
             150.0f));
 
