@@ -13,7 +13,7 @@
 | 08 | 产品 UI 与交互闭环 | Done |
 | 09 | 实时性能与稳定性 | In Progress |
 | 10 | DAW 集成测试与 Beta | In Progress |
-| 11 | 发布、许可与商业化准备 | Not Started |
+| 11 | 发布、许可与商业化准备 | In Progress |
 
 ## 阅读顺序
 
