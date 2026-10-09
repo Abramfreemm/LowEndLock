@@ -51,6 +51,9 @@ public:
     bool isLockEngaged() const { return lockEngaged.load(); }
     bool isAnalysisReady() const { return analysisResultReady.load(); }
     bool isBypassCorrection() const { return bypassCorrection.load(); }
+    bool isCorrectionActive() const;
+    float getEffectivePolarity() const;
+    float getEffectiveDelaySamples() const;
 
     void requestAnalysis();
     void setLockEngaged (bool engaged);

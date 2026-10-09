@@ -149,13 +149,11 @@ public:
         g.setColour (juce::Colours::orange.withAlpha (0.9f));
         drawTrace (g, main, midY, scale, w, n, 0.0f, 1.0f);
 
-        const auto locked = processor.isLockEngaged()
-                            && processor.isAnalysisReady()
-                            && ! processor.isBypassCorrection();
-        if (locked)
+        const auto corrected = processor.isCorrectionActive();
+        if (corrected)
         {
-            const auto polarity = processor.getSuggestedPolarity() < 0 ? -1.0f : 1.0f;
-            const auto delay = processor.getSuggestedDelaySamples();
+            const auto polarity = processor.getEffectivePolarity();
+            const auto delay = processor.getEffectiveDelaySamples();
 
             g.setColour (juce::Colours::limegreen.withAlpha (0.9f));
             drawTrace (g, main, midY, scale, w, n, delay, polarity);
@@ -166,7 +164,7 @@ public:
         g.drawText ("Kick", 4, 4, 40, 14, juce::Justification::left, false);
         g.setColour (juce::Colours::orange);
         g.drawText ("Bass", 4, 18, 40, 14, juce::Justification::left, false);
-        if (locked)
+        if (corrected)
         {
             g.setColour (juce::Colours::limegreen);
             g.drawText ("Fixed", 4, 32, 48, 14, juce::Justification::left, false);

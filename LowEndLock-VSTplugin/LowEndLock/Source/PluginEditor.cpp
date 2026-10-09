@@ -208,8 +208,23 @@ void LowEndLockAudioProcessorEditor::timerCallback()
     const auto locked = audioProcessor.isLockEngaged();
     const auto ready = audioProcessor.isAnalysisReady();
     const auto bypassed = audioProcessor.isBypassCorrection();
+    const auto manual = audioProcessor.getAPVTS().getRawParameterValue ("manual")->load() > 0.5f;
 
-    if (locked && ready)
+    if (manual)
+    {
+        savedValueLabel.setText ("Manual", juce::dontSendNotification);
+        savedValueLabel.setColour (juce::Label::textColourId,
+                                   bypassed ? juce::Colours::grey : juce::Colours::limegreen);
+
+        const auto invert = audioProcessor.getEffectivePolarity() < 0.0f;
+        const auto delayMs = audioProcessor.getEffectiveDelaySamples()
+                             / audioProcessor.getCurrentSampleRate() * 1000.0;
+        detailLabel.setText (juce::String ("Polarity: ") + (invert ? "Invert" : "Normal")
+                             + "    Delay: " + juce::String (delayMs, 2) + " ms"
+                             + (bypassed ? "   [bypassed]" : ""),
+                             juce::dontSendNotification);
+    }
+    else if (locked && ready)
     {
         const auto savedDb = audioProcessor.getCancellationSavedDb();
         savedValueLabel.setText (juce::String (savedDb >= 0.0f ? "+" : "")
@@ -248,7 +263,6 @@ void LowEndLockAudioProcessorEditor::timerCallback()
     lockButton.setButtonText (locked ? "Locked" : "Lock");
     abButton.setToggleState (bypassed, juce::dontSendNotification);
     abButton.setButtonText (bypassed ? "A (orig)" : "B (fix)");
-    const auto manual = audioProcessor.getAPVTS().getRawParameterValue ("manual")->load() > 0.5f;
     manualButton.setButtonText (manual ? "Manual" : "Auto");
 
     waveformScope.repaint();

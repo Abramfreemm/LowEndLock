@@ -409,6 +409,35 @@ void LowEndLockAudioProcessor::setBypassCorrection (bool bypass)
     bypassCorrection.store (bypass);
 }
 
+bool LowEndLockAudioProcessor::isCorrectionActive() const
+{
+    if (bypassCorrection.load())
+        return false;
+
+    if (apvts.getRawParameterValue ("manual")->load() > 0.5f)
+        return true;
+
+    return lockEngaged.load()
+        && analysisResultReady.load()
+        && analysisConfidence.load() > 0.15f;
+}
+
+float LowEndLockAudioProcessor::getEffectivePolarity() const
+{
+    if (apvts.getRawParameterValue ("manual")->load() > 0.5f)
+        return apvts.getRawParameterValue ("invert")->load() > 0.5f ? -1.0f : 1.0f;
+
+    return suggestedPolarity.load() < 0 ? -1.0f : 1.0f;
+}
+
+float LowEndLockAudioProcessor::getEffectiveDelaySamples() const
+{
+    if (apvts.getRawParameterValue ("manual")->load() > 0.5f)
+        return static_cast<float> (apvts.getRawParameterValue ("delayMs")->load() / 1000.0 * currentSampleRate);
+
+    return suggestedDelaySamples.load();
+}
+
 void LowEndLockAudioProcessor::getScopeData (std::vector<float>& main, std::vector<float>& side) const
 {
     const juce::ScopedLock sl (scopeLock);
@@ -570,27 +599,11 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     }
 
     const auto mix = apvts.getRawParameterValue ("mix")->load();
-    const auto analysisReady = analysisResultReady.load();
-    const auto confidence = analysisConfidence.load();
-    const auto locked = lockEngaged.load();
-    const auto bypassed = bypassCorrection.load();
 
-    const auto manual = apvts.getRawParameterValue ("manual")->load() > 0.5f;
-    const auto correctionActive = ! bypassed
-                                  && (manual || (locked && analysisReady && confidence > 0.15f));
-
-    if (correctionActive)
+    if (isCorrectionActive())
     {
-        const auto polarity = manual
-            ? (apvts.getRawParameterValue ("invert")->load() > 0.5f ? -1.0f : 1.0f)
-            : (suggestedPolarity.load() < 0 ? -1.0f : 1.0f);
-
-        const auto delaySamples = manual
-            ? static_cast<float> (apvts.getRawParameterValue ("delayMs")->load() / 1000.0 * currentSampleRate)
-            : suggestedDelaySamples.load();
-
-        polaritySmoother.setTargetValue (polarity);
-        delaySmoother.setTargetValue (delayCenterSamples + delaySamples);
+        polaritySmoother.setTargetValue (getEffectivePolarity());
+        delaySmoother.setTargetValue (delayCenterSamples + getEffectiveDelaySamples());
     }
     else
     {
