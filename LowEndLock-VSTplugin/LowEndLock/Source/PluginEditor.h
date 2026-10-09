@@ -211,6 +211,38 @@ private:
 };
 
 //==============================================================================
+/** A small status LED that glows green when the sidechain signal is present. */
+class StatusLED : public juce::Component
+{
+public:
+    void setActive (bool a)
+    {
+        if (a == active)
+            return;
+        active = a;
+        repaint();
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        const auto centre = getLocalBounds().toFloat().getCentre();
+        const auto r = juce::jmin (getWidth(), getHeight()) * 0.5f;
+
+        if (active)
+        {
+            g.setColour (juce::Colours::limegreen.withAlpha (0.22f));
+            g.fillEllipse (centre.x - r, centre.y - r, r * 2.0f, r * 2.0f);
+        }
+
+        g.setColour (active ? juce::Colours::limegreen : juce::Colour (0xff3a3f46));
+        g.fillEllipse (centre.x - r * 0.55f, centre.y - r * 0.55f, r * 1.1f, r * 1.1f);
+    }
+
+private:
+    bool active = false;
+};
+
+//==============================================================================
 /**
 */
 class LowEndLockAudioProcessorEditor  : public juce::AudioProcessorEditor,
@@ -238,6 +270,7 @@ private:
     juce::Label gainLabel;
     juce::Label bassLowLabel;
     juce::Label kickLowLabel;
+    StatusLED sidechainLed;
     juce::Label savedCaptionLabel;
     juce::Label savedValueLabel;
     juce::Label detailLabel;

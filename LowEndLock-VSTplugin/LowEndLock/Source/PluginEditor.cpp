@@ -123,6 +123,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     kickLowLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (bassLowLabel);
     addAndMakeVisible (kickLowLabel);
+    addAndMakeVisible (sidechainLed);
 
     startTimerHz (10);
 }
@@ -202,6 +203,7 @@ void LowEndLockAudioProcessorEditor::timerCallback()
         juce::dontSendNotification);
     kickLowLabel.setColour (juce::Label::textColourId,
                             sideConnected ? juce::Colours::limegreen : juce::Colours::grey);
+    sidechainLed.setActive (sideConnected);
 
     const auto locked = audioProcessor.isLockEngaged();
     const auto ready = audioProcessor.isAnalysisReady();
@@ -320,5 +322,7 @@ void LowEndLockAudioProcessorEditor::resized()
 
     auto metersBounds = bounds.removeFromBottom (52);
     bassLowLabel.setBounds (metersBounds.removeFromTop (24));
-    kickLowLabel.setBounds (metersBounds.removeFromTop (24));
+    auto kickRow = metersBounds.removeFromTop (24);
+    sidechainLed.setBounds (kickRow.removeFromLeft (16).withSizeKeepingCentre (12, 12));
+    kickLowLabel.setBounds (kickRow);
 }
