@@ -149,14 +149,16 @@ public:
         g.setColour (juce::Colours::orange.withAlpha (0.9f));
         drawTrace (g, main, midY, scale, w, n, 0.0f, 1.0f);
 
-        const auto corrected = processor.isCorrectionActive();
+        const auto manual = processor.getAPVTS().getRawParameterValue ("manual")->load() > 0.5f;
+        const auto corrected = ! processor.isBypassCorrection()
+                               && (manual || (processor.isLockEngaged() && processor.isAnalysisReady()));
         if (corrected)
         {
             const auto polarity = processor.getEffectivePolarity();
             const auto delay = processor.getEffectiveDelaySamples();
 
             g.setColour (juce::Colours::limegreen.withAlpha (0.9f));
-            drawTrace (g, main, midY, scale, w, n, delay, polarity);
+            drawTrace (g, main, midY, scale, w, n, delay, polarity, true);
         }
 
         g.setFont (juce::FontOptions (11.0f));
@@ -177,7 +179,7 @@ private:
     static void drawTrace (juce::Graphics& g,
                            const std::vector<float>& data,
                            float midY, float scale, float w, int n,
-                           float shiftSamples, float gain)
+                           float shiftSamples, float gain, bool dashed = false)
     {
         juce::Path path;
         bool first = true;
@@ -204,7 +206,17 @@ private:
             }
         }
 
-        g.strokePath (path, juce::PathStrokeType (1.0f));
+        if (dashed)
+        {
+            juce::Path dashedPath;
+            const float dashLengths[] = { 4.0f, 3.0f };
+            juce::PathStrokeType (1.5f).createDashedStroke (dashedPath, path, dashLengths, 2);
+            g.fillPath (dashedPath);
+        }
+        else
+        {
+            g.strokePath (path, juce::PathStrokeType (1.5f));
+        }
     }
 };
 
