@@ -21,7 +21,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     presetLabel.setJustificationType (juce::Justification::right);
     addAndMakeVisible (presetLabel);
 
-    presetBox.addItemList ({ "默认", "自动紧致", "极性翻转", "柔和混合", "宽低频" }, 1);
+    presetBox.addItemList ({ "Default", "Auto Tight", "Polarity Flip", "Deep Blend", "Wide Low" }, 1);
     presetBox.setSelectedId (1);
     presetBox.onChange = [this] { applyPreset (presetBox.getSelectedId()); };
     addAndMakeVisible (presetBox);
