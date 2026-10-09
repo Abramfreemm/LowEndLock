@@ -26,6 +26,7 @@
 - ✅ 无锁音频线程：跨线程通信全部走 `std::atomic`；scope 缓冲用 `CriticalSection`（仅 UI 10Hz 读取，不锁音频热路径）。
 - ✅ 分析任务后台执行：互相关 O(n×lag) 只在点 Lock 时跑一次（约 2s 缓冲 × ±20ms lag），不在实时路径。
 - ✅ 报告延迟：新增 `getLatencySamples()`，返回 `delayCenterSamples`（约 20ms@48k）。
+- ✅ 修复 Low Band 爆音：截止频率用 `LinearSmoothedValue`（30ms）平滑过渡，更新滤波器系数时不再 `reset()`。
 - ⚠️ 延迟取舍：校正延迟线需要「中心偏移」才能做 ±20ms 的正/负移相，因此固有 ~20ms 延迟，**超过原定 64 samples 目标**。这是相位对齐工具的结构性取舍（≤64 samples 意味着移相范围只有 ±0.6ms，不实用）。对混音场景可接受；若后续要做「低延迟」版本可把移相范围缩到 ±5ms。
 
 ## 待 DAW 实测
