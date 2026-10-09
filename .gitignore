@@ -37,3 +37,4 @@ venv/
 # Release packaging artifacts (binaries + zip)
 /release/LowEndLock-1.0.1-mac/
 /release/*.zip
+/release/*副本*
