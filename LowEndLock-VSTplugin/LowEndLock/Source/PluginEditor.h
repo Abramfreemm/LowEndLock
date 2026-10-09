@@ -251,6 +251,7 @@ public:
     ~LowEndLockAudioProcessorEditor() override;
 
     void applyPreset (int presetId);
+    void switchToManual();
 
     //==============================================================================
     void timerCallback() override;

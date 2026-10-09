@@ -304,6 +304,8 @@ void LowEndLockAudioProcessor::prepareToPlay (double sampleRate, int samplesPerB
     gainSmoother.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (initialGainDb));
 
     currentLowCutHz = apvts.getRawParameterValue ("lowCut")->load();
+    lowCutSmoother.reset (sampleRate, 0.03);
+    lowCutSmoother.setCurrentAndTargetValue (currentLowCutHz);
 
     const auto highPassCoefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass (sampleRate, 20.0f);
     const auto lowPassCoefficients  = juce::dsp::IIR::Coefficients<float>::makeLowPass  (sampleRate, currentLowCutHz);
@@ -469,19 +471,12 @@ void LowEndLockAudioProcessor::updateLowCutFilters (float lowCutHz)
         mainLowPass[channel].coefficients = lowPassCoefficients;
         sideLowPass[channel].coefficients = lowPassCoefficients;
         correctionLowPass[channel].coefficients = lowPassCoefficients;
-        mainLowPass[channel].reset();
-        sideLowPass[channel].reset();
-        correctionLowPass[channel].reset();
     }
 
     analysisMainLowPass[0].coefficients = lowPassCoefficients;
     analysisSideLowPass[0].coefficients = lowPassCoefficients;
     scopeMainLowPass[0].coefficients = lowPassCoefficients;
     scopeSideLowPass[0].coefficients = lowPassCoefficients;
-    analysisMainLowPass[0].reset();
-    analysisSideLowPass[0].reset();
-    scopeMainLowPass[0].reset();
-    scopeSideLowPass[0].reset();
 }
 
 void LowEndLockAudioProcessor::captureAnalysisData (const juce::AudioBuffer<float>& main,
@@ -568,8 +563,10 @@ void LowEndLockAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, j
     auto mainInputOutput = getBusBuffer (buffer, true, 0);
     auto sidechainInput  = getBusBuffer (buffer, true, 1);
 
-    const auto lowCutHz = apvts.getRawParameterValue ("lowCut")->load();
-    if (std::abs (lowCutHz - currentLowCutHz) > 0.5f)
+    const auto lowCutTarget = apvts.getRawParameterValue ("lowCut")->load();
+    lowCutSmoother.setTargetValue (lowCutTarget);
+    const auto lowCutHz = lowCutSmoother.getNextValue();
+    if (std::abs (lowCutHz - currentLowCutHz) > 0.05f)
     {
         currentLowCutHz = lowCutHz;
         updateLowCutFilters (lowCutHz);

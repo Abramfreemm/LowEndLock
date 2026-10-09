@@ -88,6 +88,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     invertButton.setButtonText ("Invert Polarity");
     invertAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         audioProcessor.getAPVTS(), "invert", invertButton);
+    invertButton.onClick = [this] { switchToManual(); };
     addAndMakeVisible (invertButton);
 
     delayLabel.setText ("Delay", juce::dontSendNotification);
@@ -98,6 +99,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     delaySlider.setTextValueSuffix (" ms");
     delayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "delayMs", delaySlider);
+    delaySlider.onDragStart = [this] { switchToManual(); };
     addAndMakeVisible (delaySlider);
 
     mixLabel.setText ("Mix", juce::dontSendNotification);
@@ -183,6 +185,12 @@ void LowEndLockAudioProcessorEditor::applyPreset (int presetId)
             set ("lowCut", 150.0f);
             break;
     }
+}
+
+void LowEndLockAudioProcessorEditor::switchToManual()
+{
+    if (auto* p = dynamic_cast<juce::RangedAudioParameter*> (audioProcessor.getAPVTS().getParameter ("manual")))
+        p->setValueNotifyingHost (1.0f);
 }
 
 //==============================================================================
