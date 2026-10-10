@@ -37,6 +37,8 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
 
     gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "gain", gainSlider);
+    gainSlider.setSkewFactorFromMidPoint (0.0);
+    gainSlider.setDoubleClickReturnValue (true, 0.0);
 
     savedCaptionLabel.setText ("CANCELLATION SAVED", juce::dontSendNotification);
     savedCaptionLabel.setJustificationType (juce::Justification::centred);
@@ -100,6 +102,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     delayAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "delayMs", delaySlider);
     delaySlider.onDragStart = [this] { switchToManual(); };
+    delaySlider.setDoubleClickReturnValue (true, 0.0);
     addAndMakeVisible (delaySlider);
 
     mixLabel.setText ("Mix", juce::dontSendNotification);
@@ -109,6 +112,7 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     mixSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 72, 18);
     mixAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "mix", mixSlider);
+    mixSlider.setDoubleClickReturnValue (true, 1.0);
     addAndMakeVisible (mixSlider);
 
     lowCutLabel.setText ("Low Band", juce::dontSendNotification);
@@ -119,6 +123,8 @@ LowEndLockAudioProcessorEditor::LowEndLockAudioProcessorEditor (LowEndLockAudioP
     lowCutSlider.setTextValueSuffix (" Hz");
     lowCutAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
         audioProcessor.getAPVTS(), "lowCut", lowCutSlider);
+    lowCutSlider.setSkewFactorFromMidPoint (150.0);
+    lowCutSlider.setDoubleClickReturnValue (true, 150.0);
     addAndMakeVisible (lowCutSlider);
 
     bassLowLabel.setJustificationType (juce::Justification::centred);
